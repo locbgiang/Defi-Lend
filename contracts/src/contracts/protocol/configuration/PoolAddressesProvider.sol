@@ -5,9 +5,22 @@ import {Ownable} from '../../dependencies/openzeppelin/contracts/Ownable.sol';
 import {IPoolAddressesProvider} from '../../interfaces/IPoolAddressesProvider.sol';
 import {InitializableImmutableAdminUpgradeabilityProxy} from '../../misc/aave-upgradeability/InitializableImmutableAdminUpgradeabilityProxy.sol';
 
-contract PoolAddressesProvider is Ownable, IPoolAddressesProvider {
+
+/**
+ * @title PoolAddressesProvider
+ * @author Loc Giang
+ * @notice This contract serves as a central registry for managing addresses of key protocol 
+ * components in a Defi lending platform. It acts as a single source of truth for locating all critical 
+ * protocol contracts
+ */
+contract PoolAddressesProvider is Ownable, IPoolAddressesProvider {\
+    // string identifier that distinguishes different instances/deployment
+    // Ex: "Ethereum Main Market", "Polygon Market", "Arbitrum Market"
     string private _marketId;
 
+    // stores the addresses of protocol component contracts (or their proxies)
+    // proxy addresses: Pool, PoolConfigurator
+    // direct contract addresses: PriceOracle, ACLManager, ACLAdmin, PriceOracleSentinel
     mapping(bytes32 => address) private _addresses;
 
     bytes32 private constant POOL = 'POOL';
@@ -18,29 +31,44 @@ contract PoolAddressesProvider is Ownable, IPoolAddressesProvider {
     bytes32 private constant PRICE_ORACLE_SENTINEL = 'PRICE_ORACLE_SENTINEL';
     bytes32 private constant DATA_PROVIDER = 'DATA_PROVIDER';
 
+    /**
+     * @param marketId A string indentifier for the market (e.g. "Ethereum Main", "Polygon", "Arbitrum")
+     * @param owner The address that will become the owner of the contract
+     */
     constructor(string memory marketId, address owner) {
+        // sets the market identifier for this instance
+        // calls the internal function that:
+        //      stores the marketId in the _marketId state variable 
+        //      emits MarketIdSet event for tracking
         _setMarketId(marketId);
+        // transfer ownership from the deployer to the specified owner address
+        // comes from Ownable contract
         transferOwnership(owner);
     }
 
+    // this function returns the markedId
     function getMarketId() external view override returns (string memory) {
         return _marketId;
     }
 
+    // this function sets the markedId
     function setMarketId(string memory newMarketId) external override onlyOwner {
         _setMarketId(newMarketId);
     }
 
+    // this function returns the address with the given id
     function getAddress(bytes32 id) public view override returns (address) {
         return _addresses[id];
     }
 
+    // this function set the address
     function setAddress(bytes32 id, address newAddress) external override onlyOwner {
         address oldAddress = _addresses[id];
         _addresses[id] = newAddress;
         emit AddressSet(id, oldAddress, newAddress);
     }
 
+    // set the address as proxy 
     function setAddressAsProxy(
         bytes32 id,
         address newImplementationAddress
