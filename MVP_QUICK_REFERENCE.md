@@ -4,25 +4,25 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    THE THREE TOKENS                          │
+│                    THE THREE TOKENS                         │
 ├─────────────────────────────────────────────────────────────┤
-│                                                              │
+│                                                             │
 │  1. UNDERLYING TOKEN (e.g., DAI)                            │
 │     • The actual asset (ERC20)                              │
 │     • What users deposit and borrow                         │
-│                                                              │
+│                                                             │
 │  2. aToken (e.g., aDAI)                                     │
 │     • Receipt token for deposits                            │
 │     • Balance GROWS automatically (interest!)               │
 │     • Can be transferred                                    │
 │     • Redeemable 1:1 for underlying                         │
-│                                                              │
+│                                                             │
 │  3. DEBT TOKEN (e.g., variableDebtDAI)                      │
 │     • Tracks what you owe                                   │
 │     • Balance GROWS automatically (interest!)               │
 │     • NON-transferrable                                     │
 │     • Must be repaid                                        │
-│                                                              │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 

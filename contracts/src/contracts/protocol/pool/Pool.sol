@@ -31,4 +31,39 @@ abstract contract Pool {
         // saves the strategy address for calculating interest rates on the borrows/deposits
         RESERVE_INTEREST_RATE_STRATEGY = address(interestRateStrategy);
     }
+
+    // deposit collateral
+    function supplyWithPermit(
+        address asset,
+        uint256 amount,
+        address onBehalfOf,
+        uint16 referralCode,
+        uint256 deadline,
+        uint8 permitV,
+        bytes32 permitR,
+        bytes32 permitS
+    ) public virtual ovveride {
+        try {
+
+        } catch {
+            SupplyLogic.executeSupply(
+                _reserves,
+                _reservesList,
+                _userConfig[onBehalfOf],
+                DataTypes.ExecuteSupplyParams({
+                    user: _msgSender(),
+                    asset: asset,
+                    interestRateStrategyAddress: RESERVE_INTEREST_RATE_STRATEGY,
+                    amount: amount,
+                    onBehalfOf: onBehalfOf,
+                    refferalCode: refferalcode
+                })
+            )
+        }
+    }
+
+    // withdrawl collateral
+    // borrow against collateral
+    // repay borrowed tokens
+    // liquidate
 }
