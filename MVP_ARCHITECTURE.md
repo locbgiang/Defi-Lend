@@ -130,36 +130,36 @@ User                Pool.sol          SupplyLogic       AToken         Underlyin
 
 ```
 User              Pool.sol        BorrowLogic    ValidationLogic  VariableDebtToken  Underlying
- │                   │                 │                │                │              │
- │ borrow(DAI, 50)   │                 │                │                │              │
- ├──────────────────>│                 │                │                │              │
- │                   │                 │                │                │              │
- │                   │ executeBorrow() │                │                │              │
- │                   ├────────────────>│                │                │              │
- │                   │                 │                │                │              │
+ │                   │                 │                 │                │              │
+ │ borrow(DAI, 50)   │                 │                 │                │              │
+ ├──────────────────>│                 │                 │                │              │
+ │                   │                 │                 │                │              │
+ │                   │ executeBorrow() │                 │                │              │
+ │                   ├────────────────>│                 │                │              │
+ │                   │                 │                 │                │              │
  │                   │                 │ validateBorrow()│                │              │
- │                   │                 ├───────────────>│                │              │
- │                   │                 │                │                │              │
- │                   │                 │ Check:         │                │              │
- │                   │                 │ • Health Factor > 1            │              │
- │                   │                 │ • Collateral sufficient        │              │
- │                   │                 │ • Amount available │           │              │
- │                   │                 │                │                │              │
- │                   │                 │<───────────────┤                │              │
- │                   │                 │ Validation OK  │                │              │
- │                   │                 │                │                │              │
- │                   │                 │ mint(user, 50 debt tokens)     │              │
- │                   │                 ├───────────────────────────────>│              │
- │                   │                 │                │                │              │
- │                   │                 │ transfer(user, 50 DAI)          │              │
+ │                   │                 ├────────────────>│                │              │
+ │                   │                 │                 │                │              │
+ │                   │                 │ Check:          │                │              │
+ │                   │                 │ • Health Factor > 1              │              │
+ │                   │                 │ • Collateral sufficient          │              │
+ │                   │                 │ • Amount available               │              │
+ │                   │                 │                 │                │              │
+ │                   │                 │<────────────────┤                │              │
+ │                   │                 │ Validation OK   │                │              │
+ │                   │                 │                 │                │              │
+ │                   │                 │ mint(user, 50 debt tokens)       │              │
+ │                   │                 ├─────────────────────────────────>│              │
+ │                   │                 │                 │                │              │
+ │                   │                 │ transfer(user, 50 DAI)           │              │
  │                   │                 ├────────────────────────────────────────────────>
- │                   │                 │                │                │              │
- │                   │                 │ Update interest rates           │              │
- │                   │                 │ Update user debt                │              │
- │                   │                 │                │                │              │
- │                   │<────────────────┤                │                │              │
- │<──────────────────┤                 │                │                │              │
- │  50 DAI received  │                 │                │                │              │
+ │                   │                 │                 │                │              │
+ │                   │                 │ Update interest rates            │              │
+ │                   │                 │ Update user debt                 │              │
+ │                   │                 │                 │                │              │
+ │                   │<────────────────┤                 │                │              │
+ │<──────────────────┤                 │                 │                │              │
+ │  50 DAI received  │                 │                 │                │              │
 ```
 
 **What happens:**
@@ -194,7 +194,7 @@ User             Pool.sol      SupplyLogic    ValidationLogic    AToken      Und
  │                  │executeWithdraw│               │              │              │
  │                  ├──────────────>│               │              │              │
  │                  │               │               │              │              │
- │                  │               │validateWithdraw()           │              │
+ │                  │               │validateWithdraw()            │              │
  │                  │               ├──────────────>│              │              │
  │                  │               │               │              │              │
  │                  │               │ Check:        │              │              │
