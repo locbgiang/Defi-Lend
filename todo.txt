@@ -1,0 +1,4 @@
+1. Implement aToken (interest-bearing token) that gets minited to suppliers
+2. supply/withrawal functions
+3. borrow/repay functions
+4. liquidation functions

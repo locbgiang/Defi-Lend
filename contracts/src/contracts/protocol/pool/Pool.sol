@@ -33,33 +33,13 @@ abstract contract Pool {
     }
 
     // deposit collateral
-    function supplyWithPermit(
+    function supply(
         address asset,
         uint256 amount,
         address onBehalfOf,
-        uint16 referralCode,
-        uint256 deadline,
-        uint8 permitV,
-        bytes32 permitR,
-        bytes32 permitS
-    ) public virtual ovveride {
-        try {
-
-        } catch {
-            SupplyLogic.executeSupply(
-                _reserves,
-                _reservesList,
-                _userConfig[onBehalfOf],
-                DataTypes.ExecuteSupplyParams({
-                    user: _msgSender(),
-                    asset: asset,
-                    interestRateStrategyAddress: RESERVE_INTEREST_RATE_STRATEGY,
-                    amount: amount,
-                    onBehalfOf: onBehalfOf,
-                    refferalCode: refferalcode
-                })
-            )
-        }
+        uint16 referralCode
+    ) public {
+        
     }
 
     // withdrawl collateral
