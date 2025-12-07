@@ -32,7 +32,7 @@ contract AToken is ERC20 {
         _;
     }
 
-    contructor (
+    constructor (
         address pool,
         address underlyingAsset,
         address treasury,
@@ -119,5 +119,5 @@ contract AToken is ERC20 {
         address indexed from,
         address indexed to,
         uint256 value
-    )
+    );
 }
