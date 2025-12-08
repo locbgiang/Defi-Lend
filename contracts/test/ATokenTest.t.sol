@@ -27,6 +27,7 @@ contract ATokenTest is Test {
     event Mint(address indexed user, uint256 amount, uint256 currentBalance, uint256 totalSupply);
     event Burn(address indexed user, uint256 amount, uint256 currentBalance, uint256 totalSupply);
     event TransferUnderlying(address indexed target, uint256 amount);
+    event MintToTreasury(address indexed treasury, uint256 amount);
     event TransferOnLiquidation(address indexed from, address indexed to, uint256 value);
 
     function setUp() public {
@@ -121,6 +122,34 @@ contract ATokenTest is Test {
         emit TransferUnderlying(user1, 100);
         aToken.transferUnderlying(user1, 100);
         assertEq(underlying.balanceOf(user1), 100);
+    }
+
+    function testMintToTreasury() public {
+        // test 1: Only Pool can mint to treasury
+        vm.prank(user1);
+        vm.expectRevert("Caller must be pool");
+        aToken.mintToTreasury(100);
+
+        // test 2: cannot mint zero amount
+        vm.prank(pool);
+        vm.expectRevert("Amount must be greater than 0");
+        aToken.mintToTreasury(0);
+
+        // test 3: successful mint to treasury with even emission
+        vm.prank(pool);
+        vm.expectEmit(true, false, false, true);
+        emit MintToTreasury(treasury, 100);
+        aToken.mintToTreasury(100);
+        
+        assertEq(aToken.balanceOf(treasury), 100);
+        assertEq(aToken.totalSupply(), 100);
+
+        // test 4: multiple mints accumulate
+        vm.prank(pool);
+        aToken.mintToTreasury(50);
+
+        assertEq(aToken.balanceOf(treasury), 150);
+        assertEq(aToken.totalSupply(), 150);
     }
 
     function testTransferOnLiquidation() public {

@@ -71,7 +71,7 @@ contract AToken is ERC20 {
         emit Burn(user, amount, balanceOf(user), totalSupply());
     }
 
-    // what do we user this function for?
+
     function transferUnderlying(address target, uint256 amount) external onlyPool {
         require(target != address(0), "Invalid target address");
         require(amount > 0, "Amount must be greater than 0");
@@ -79,6 +79,17 @@ contract AToken is ERC20 {
         UNDERLYING_ASSET.safeTransfer(target, amount);
 
         emit TransferUnderlying(target, amount);
+    }
+
+    function mintToTreasury(uint256 amount) external onlyPool {
+        require(amount > 0, "Amount must be greater than 0");
+
+        // this mints aTokens, not underlying!
+        // the underlying assets ALREADY exist in the contract
+        // from borrower interest payments
+        _mint(RESERVE_TREASURY_ADDRESS, amount);
+        
+        emit MintToTreasury(RESERVE_TREASURY_ADDRESS, amount);
     }
 
     function transferOnLiquidation(
@@ -111,6 +122,11 @@ contract AToken is ERC20 {
 
     event TransferUnderlying(
         address indexed target,
+        uint256 amount
+    );
+
+    event MintToTreasury(
+        address indexed treasury,
         uint256 amount
     );
 
