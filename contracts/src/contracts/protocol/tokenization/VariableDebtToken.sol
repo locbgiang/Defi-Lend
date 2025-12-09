@@ -69,7 +69,7 @@ contract VariableDebtToken is ERC20 {
     }
 
     function transferFrom(address, address, uint256) public pure override returns(bool) {
-        revert("Debt tokens are none-transferable");
+        revert("Debt tokens are non-transferable");
     } 
 
     function approve(address, uint256) public pure override returns(bool) {
@@ -82,12 +82,12 @@ contract VariableDebtToken is ERC20 {
         uint256 amount,
         uint256 currentBalance,
         uint256 totalSupply
-    )
+    );
 
     event Burn(
         address indexed user,
         uint256 amount,
         uint256 currentBalance,
         uint256 totalSupply
-    )
+    );
 }
