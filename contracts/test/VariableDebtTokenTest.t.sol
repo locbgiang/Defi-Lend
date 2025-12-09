@@ -150,15 +150,101 @@ contract VariableDebtTokenTest is Test {
         debtToken.mint(user1, 1000);
         assertEq(debtToken.balanceOf(user1), 1000);
 
+        // user2 borrows 500
+        vm.prank(pool);
+        debtToken.mint(user2, 500);
+        
+        assertEq(debtToken.balanceOf(user1), 1000);
+        assertEq(debtToken.balanceOf(user2), 500);
+        assertEq(debtToken.totalSupply(), 1500);
+    }
+
+    function testBorrowAndRepayFlow() public {
+        // user borrows 1000
+        vm.prank(pool);
+        debtToken.mint(user1, 1000);
+        assertEq(debtToken.balanceOf(user1), 1000);
+
         // user repays 300
         vm.prank(pool);
         debtToken.burn(user1, 300);
         assertEq(debtToken.balanceOf(user1), 700);
 
-        // user repays remaining 700
+        // user repays reamining 700
         vm.prank(pool);
         debtToken.burn(user1, 700);
         assertEq(debtToken.balanceOf(user1), 0);
+        assertEq(debtToken.totalSupply(), 0);
+    }
+
+    function testMultipleBorrowSameUser() public {
+        // user borrows multiple times
+        vm.startPrank(pool);
+
+        // user1 borrows 100
+        debtToken.mint(user1, 100);
+        assertEq(debtToken.balanceOf(user1), 100);
+
+        // user1 borrows 200 more
+        debtToken.mint(user1, 200);
+        assertEq(debtToken.balanceOf(user1), 300);
+
+        // user1 borrows 300 more
+        debtToken.mint(user1, 300);
+        assertEq(debtToken.balanceOf(user1), 600);
+
+        vm.stopPrank();
+    }
+
+    function testPartialRepayments() public {
+        // user borrows 1000
+        vm.prank(pool);
+        debtToken.mint(user1, 1000);
+
+        // multiple partial repayments
+        vm.startPrank(pool);
+
+        // user1 pays 100
+        debtToken.burn(user1, 100);
+        assertEq(debtToken.balanceOf(user1), 900);
+
+        // user1 pays 200
+        debtToken.burn(user1, 200);
+        assertEq(debtToken.balanceOf(user1), 700);
+
+        // user1 pays 300
+        debtToken.burn(user1, 300);
+        assertEq(debtToken.balanceOf(user1), 400);
+
+        vm.stopPrank();
+    }  
+
+    function testTotalSupplyTracking() public {
+        assertEq(debtToken.totalSupply(), 0);
+
+        // user1 borrows 1000
+        vm.prank(pool); 
+        debtToken.mint(user1, 1000);
+        assertEq(debtToken.totalSupply(), 1000);
+
+        // user2 borrows 500
+        vm.prank(pool);
+        debtToken.mint(user2, 500);
+        assertEq(debtToken.totalSupply(), 1500);
+
+        // user1 repays partially
+        vm.prank(pool);
+        debtToken.burn(user1, 300);
+        assertEq(debtToken.totalSupply(), 1200);
+
+        // user2 repays fully
+        vm.prank(pool);
+        debtToken.burn(user2, 500);
+        assertEq(debtToken.totalSupply(), 700);
+
+        // user1 repays fully
+        vm.prank(pool);
+        debtToken.burn(user1, 700);
         assertEq(debtToken.totalSupply(), 0);
     }
 } 
