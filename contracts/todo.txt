@@ -1,4 +1,4 @@
-1. VariableDebtToken.sol
+1. VariableDebtToken.sol - Done
 2. Pool.sol
 3. PriceOracle
 4. Libraries

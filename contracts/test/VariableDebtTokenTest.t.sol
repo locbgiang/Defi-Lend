@@ -247,4 +247,35 @@ contract VariableDebtTokenTest is Test {
         debtToken.burn(user1, 700);
         assertEq(debtToken.totalSupply(), 0);
     }
+
+    function testFuzzMintBurn(uint96 amount) public {
+        vm.assume(amount > 0);
+
+        // mint debt
+        vm.prank(pool);
+        debtToken.mint(user1, amount);
+        assertEq(debtToken.balanceOf(user1), amount);
+
+        // burn all debt
+        vm.prank(pool);
+        debtToken.burn(user1, amount);
+        assertEq(debtToken.balanceOf(user1), 0);
+        assertEq(debtToken.totalSupply(), 0);
+    }
+
+    function testFuzzMultipleUsers(uint96 amount1, uint96 amount2) public {
+        vm.assume(amount1 > 0 && amount2 > 0);
+        vm.assume(amount1 < type(uint96).max / 2);
+        vm.assume(amount2 < type(uint96).max / 2);
+
+        // two users borrow
+        vm.prank(pool);
+        debtToken.mint(user1, amount1);
+        vm.prank(pool);
+        debtToken.mint(user2, amount2);
+
+        assertEq(debtToken.balanceOf(user1), amount1);
+        assertEq(debtToken.balanceOf(user2), amount2);
+        assertEq(debtToken.totalSupply(), uint256(amount1) + uint256(amount2));
+    }
 } 
