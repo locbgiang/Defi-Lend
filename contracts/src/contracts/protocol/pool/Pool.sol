@@ -3,6 +3,8 @@ pragma solidity ^0.8.10;
 
 import {AToken} from "../tokenization/AToken.sol";
 import {VariableDebtToken} from "../tokenization/VariableDebtToken.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /*
 Functions:
@@ -14,12 +16,28 @@ Functions:
 */
 
 contract Pool {
+    using SafeERC20 for IERC20;
+
+    struct ReserveData{
+        address aTokenAddress;
+        address variableDebtTokenAddress;
+        uint256 liquidationThreshold;       // 8000 = 80%
+        uint256 liquidationBonus;           // 500 = 5%
+        uint256 ltv;                        // 7500 = 75%
+        bool isActive;
+    }
+
     mapping(address => ReserveData) public reserves;
     address public immutable ADDRESSES_PROVIDER;
     address public treasury;
     address public owner;
 
-    constructor(address addressProvider, address _treasury) {
+    /**
+     * @param addressesProvider reference to PoolAddressesProvider 
+     * (registry of protocol addresses)
+     * @param _treasury - where protocol fees are sent
+     */
+    constructor(address addressesProvider, address _treasury) {
         require(addressProvider != address(0), "Invalid addresses provider");
         require(_treasury != address(0), "Invalid treasury");
 
@@ -27,14 +45,22 @@ contract Pool {
         owner = msg.sender;
     }
 
-    // initialize a new reserve (must be called before supply/borrow)
+    /**
+     * before users can supply/borrow an asset (like USDC, DAI, WETH), 
+     * the pool needs to know:
+     * 1. which aToken contract represents deposits of that asset
+     * 2. which debt token contract tracks borrowing
+     * 3. risk parameters for that asset
+     * without initReserve() the pool has no idea what to do when someone tries to 
+     * deposit USDC
+     */
     function initReserve(
-        address asset,
-        address aTokenAddress,
-        address variableDebtTokenAddress,
-        uint256 ltv,
-        uint256 liquidationThreshold,
-        uint256 liquidationBonus
+        address asset,          // the underlying token (USDC address)
+        address aTokenAddress,  // the aTOken for this asset (aUSDC address)
+        address variableDebtTokenAddress,   // the debt token (vdUSDC address)
+        uint256 ltv,                        // Loan-to-Value ratio (how much you can borrow)
+        uint256 liquidationThreshold,       // when position can be liquidated
+        uint256 liquidationBonus            // bonus for liquidation
     ) external onlyOwner {
         require(asset != address(0), "Invalid asset");
         require(aTokenAddress != address(0), "Invalid aToken");
