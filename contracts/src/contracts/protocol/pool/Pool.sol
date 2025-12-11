@@ -62,20 +62,42 @@ contract Pool {
         uint256 liquidationThreshold,       // when position can be liquidated
         uint256 liquidationBonus            // bonus for liquidation
     ) external onlyOwner {
+        // ensures asset address is not zero
         require(asset != address(0), "Invalid asset");
+
+        // ensures aToken was deployed and has valid address
         require(aTokenAddress != address(0), "Invalid aToken");
+
+        // ensures debt token was deployed
         require(variableDebtTokenAddress != address(0), "Invalid debt token");
+
+        // prevent re-initializing and existing reserve
         require(!reserves[asset].isActive, "Reserve already initialized");
 
-        reserve[asset] = ReserveData({
+        // stores all the configuration for this asset in the mapping
+        reserves[asset] = ReserveData({
+            // store the aToken address
             aTokenAddress: aTokenAddress,
+
+            // the debt token contract address
             variableDebtTokenAddress: variableDebtTokenAddress,
+
+            // the liqidationThreshold is for when position can be liquidated
             liquidationThreshold: liquidationThreshold,
+
+            // liquidation bonus is the reward for liquidator 
+            // i.e. liquidator gets a 5% discount when buying collateral
             liquidationBonus: liquidationBonus,
+
+            // loan-to-value: max you can borrow (e.g., 7500 = 75%)
+            // with $100 usd, can borrow max $75 of other assets
             ltv: ltv,
+
+            // isActive: true
             isActive: true
         });
 
+        // emit event so frontend/indexers know reserve is ready
         emit ReserveInitialized(
             asset,
             aTokenAddress,
