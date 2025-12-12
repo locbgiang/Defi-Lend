@@ -32,6 +32,11 @@ contract Pool {
     address public treasury;
     address public owner;
 
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Caller is not owner");
+        _;
+    }
+
     /**
      * @param addressesProvider reference to PoolAddressesProvider 
      * (registry of protocol addresses)
@@ -108,16 +113,44 @@ contract Pool {
         );
     }
 
-    // 1. supply
+    /**
+     * 
+     * @param asset the token being deposited (e.g., USDC address)
+     * @param amount how much to deposit (e.g., 1000 USDC)
+     * @param onBehalfOf who receives the aTokens (usually msg.sender, but can be different)
+     */
     function supply(address asset, uint256 amount, address onBehalfOf) external {
+        // Load RESERVE DATA from storage into memory
+        // looks up the configuration for this asset in the reserves mapping 
+        // example: reserves[USDC] - gets aUSDC address, debt token, LTV, ect.
+        // "memory" = temporary copy (cheaper gas than reading storage multiple times)
         ReserveData memory reserve = reserves[asset];
+
+        // VALIDATION: check if this asset has been initialized
+        // if initReserve() was never called for this asset, isActive = false - revert
+        // prevents user from depositing random/unsupported tokens
         require(reserve.isActive, "Reserve not active");
+
+        // VALIDATION: prevent depositing 0 tokens
+        // would waste gas and create useless transactions
         require(amount > 0, "Amount must be greater than 0");
+
+        // VALIDATION: ensures aTokens won't be minted to zero address (black hole)
+        // if onBehalfOf = 0x0000...aTokens would be lost forever
         require(onBehalfOf != address(0), "Invalid onBehalfOf address");
 
         // transfer tokens from user to aToken contract
+        // TRANSFER ASSETS:
+        // 1. msg.sender = the person calling supply() (depositor)
+        // 2. reserve.aTokenAddress = where assets are stored (aToken contract)
+        // 3. amount = how much to transfer
         IERC20(asset).safeTransferFrom(msg.sender, reserve.aTokenAddress, amount);
 
+        AToken(reserve.aTokenAddress).mint(onBehalfOf, amount);
+
+        // EMIT EVENT:
+        // logs this deposit on the blockchain
+        // frontends/indexers can track who deposited what
         emit Supply(asset, msg.sender, onBehalfOf, amount);
     }
 
