@@ -154,20 +154,35 @@ contract Pool {
         emit Supply(asset, msg.sender, onBehalfOf, amount);
     }
 
-    // 2. withdraw
+    /**
+     * @param asset token to withdraw (e.g. USDC address)
+     * @param amount how much to withdraw (e.g. 1000 USDC)
+     * @param to where to send withdrawn tokens (can be different from msg.sender)
+     */
     function withdraw(address asset, uint256 amount, address to) external {
+        // Load reserves configuration for this asset
+        // gets aUSDC address, debt token address, ect.
         ReserveData memory reserve = reserves[asset];
+
+        // ensures reserve was initialized
         require(reserve.isActive, "Reserve not active");
+
+        // cant withdraw 0 tokens
         require(amount > 0, "Amount must be greater than 0");
+
+        // cannot send token to a black hole
         require(to != address(0), "Invalid to address");
 
         // burn aTokens from msg.msg.sender
         AToken(reserve.aTokenAddress).burn(msg.sender, amount);
 
         // transfer underlying tokens to user
-        AToken(reserve.aTokenAddress).burn(msg.sender, amount);
+        AToken(reserve.aTokenAddress).transferUnderlying(to, amount);
 
+        // emit event for tracking
         emit Withdraw(asset, msg.sender, to, amount);
+
+        // return the withdrawing amount
         return amount;
     }
 
