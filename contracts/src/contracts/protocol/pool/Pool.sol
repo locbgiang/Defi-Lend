@@ -186,21 +186,48 @@ contract Pool {
         return amount;
     }
 
-    // 3. borrow - TODO: implement health factor check
+    /**
+     * @param asset token to borrow (e.g. USDC address)
+     * @param amount how much to borrow (e.g. 500 USDC)
+     * @param onBehalfOf who gets the debt token (usually msg.sender but can be different)
+     */
     function borrow(address asset, uint256 amount, address onBehalfOf) external {
+        // load reserve configuration for this asset
+        // gets the aToken address, debt token address, LTV ect.
+        // example: reserves[USDC] -> gets aUSDC, vdUSDC addresses
         ReserveData memory reserve = reserves[asset];
+
+        // validation: ensures this asset has been initialized
+        // cant borrow an asset that hasn't been set up with initReserve()
         require(reserve.isActive, "Reserve not active");
+
+        // validation: cant borrow 0 tokens
+        // prevent useless transactions
         require(amount > 0, "Amount must be greater than 0");
 
         // todo: check health factor > 1
         // require(_calculateHealthFactor(onBehalfOf) > 1e18, "Health factor too low");
+        // missing critical check
+        // health factor = (collateral value * liquidation threshold) / debt value
+        // must be > 1 
+        // without this, anyone can borrow unlimited amounts
 
-        // mint debt tokens
+
+        // create debt:
+        // mint debt tokens to track how much is owed
+        // example: borrow 500 USDC - mint 500 vdUSDC debt tokens
+        // these debt tokens represent the loan obligation
         VariableDebtToken(reserve.variableDebtTokenAddress).mint(onBehalfOf, amount);
 
-        // transfer borrowed tokens to user
+        // give borrowed asset:
+        // transfer actual tokens from aToken contract to borrower
+        // example: transfer 500 USDC from aUSDC contract to msg.sender
+        // aToken contract had this USDC from other users' deposits
         AToken(reserve.aTokenAddress).transferUnderlying(msg.sender, amount);
 
+        // emit event:
+        // log this borrow on the blockchain
+        // frontends/indexers can track who borrowed what
         emit Borrow(asset, msg.sender, onBehalfOf, amount);
     }
 
