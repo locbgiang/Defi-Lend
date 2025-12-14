@@ -47,6 +47,7 @@ contract Pool {
         require(_treasury != address(0), "Invalid treasury");
 
         ADDRESSES_PROVIDER = addressesProvider;
+        treasury = _treasury;
         owner = msg.sender;
     }
 
