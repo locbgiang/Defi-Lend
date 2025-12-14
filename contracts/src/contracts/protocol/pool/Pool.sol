@@ -231,19 +231,46 @@ contract Pool {
         emit Borrow(asset, msg.sender, onBehalfOf, amount);
     }
 
-    // 4. repay
+    /**
+     * @param asset token being repaid (e.g. USDC address)
+     * @param amount how much to repay (e.g. 500 USDC)
+     * @param onBehalfOf whose debt to repay (usually msg.sender, but can pay someone else's debt)
+     */
     function repay(address asset, uint256 amount, address onBehalfOf) external returns(uint256) {
+        // load reserve configuration for this asset
+        // gets aUSDC address, vdUSDC debt token address, etc.
+        // memory = temporary copy (gas opimization)
         ReserveData memory reserve = reserves[asset];
+
+        // validation: ensures this asset has een initialized
+        // cant repay an asset that hasnt been set up with initReserve()
+        // prevents repaying unsupported/random tokens
         require(reserve.isActive, "Reserve not active");
+
+        // validation: cant repay 0 tokens
+        // prevents useless transactions that waste gas
         require(amount > 0, "Amount must be greater than 0");
 
-        // transfer tokens from user to aToken contract
+        // return borrowed assets:
+        // msg.sender = person making the repayment (payer)
+        // reserve.aTokenAddress = where assets go back (aToken contract)
+        // amount = how much you pay
         IERC20(asset).safeTransferFrom(msg.sender, reserve.aTokenAddress, amount);
 
-        // burn debt tokens
+        // reduce debt:
+        // burn debt tokens to reduce the loan obligation
+        // example: user had 500 vdUSDC debt tokens
+        // burns 500 vdUSDC - user now has 0 vdUSDC
+        // debt is fully paid off
+        // onBehalfOf = whose debt to reduce (can pay for someone else)
         VariableDebtToken(reserve.variableDebtTokenAddress).burn(onBehalfOf, amount);
 
+        // emit event:
+        // log this repayment on the blockchain
+        // frontends/indexers can track who repaid what
         emit Repay(asset, msg.sender, onBehalfOf, amount);
+
+        // return the amount repaid
         return amount;
     }
 
