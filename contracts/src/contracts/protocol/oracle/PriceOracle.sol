@@ -102,4 +102,27 @@ contract PriceOracle {
 
         return price;
     }
+
+    function _getManualPrice(address asset) internal view returns (uint256) {
+        uint256 price = manualPrices[asset];
+        if (price == 0) revert PriceNotSet(asset);
+        return price;
+    }
+
+    function hasPrice(address asset) external view returns (bool) {
+        if (useChainlink[asset]) {
+            return assetPriceFeeds[asset]  != address(0);
+        } else {
+            return manualPrices[asset] > 0;
+        }
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+
+        address oldOwner = owner;
+        owner = newOwner;
+
+        emit OwnershipTransferred(oldOwner, newOwner);
+    }
 }
