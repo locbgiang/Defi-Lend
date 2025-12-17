@@ -1,22 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
+import {AggregatorV3Interface} from "../../interfaces/AggregatorV3Interface.sol";
+
 /**
  * Simple price oracle for MVP
- * in production, use Chainlink
+ * Supports both Chainlink feeds and manual prices (for testing)
  */
-
 contract PriceOracle {
-    // errors
+    // Errors
     error PriceNotSet(address asset);
-    error StalePrice(address asset, uint256 updateAt);
+    error StalePrice(address asset, uint256 updatedAt);
     error InvalidPrice(address asset, int256 price);
     error NotOwner();
     error ZeroAddress();
 
     address public owner;
 
-    mapping(address => address)  public assetPriceFeed;
+    // FIX: Changed to plural "assetPriceFeeds" for consistency
+    mapping(address => address) public assetPriceFeeds;
 
     mapping(address => uint256) public manualPrices;
 
@@ -25,6 +27,11 @@ contract PriceOracle {
     uint256 public constant STALENESS_THRESHOLD = 1 hours;
 
     uint256 public constant PRICE_DECIMALS = 18;
+
+    // FIX: Added missing events
+    event PriceFeedSet(address indexed asset, address indexed priceFeed);
+    event ManualPriceSet(address indexed asset, uint256 price);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -69,34 +76,35 @@ contract PriceOracle {
 
         AggregatorV3Interface feed = AggregatorV3Interface(priceFeed);
 
+        // FIX: Added missing commas
         (
-            /* uint80 roundId */
+            /* uint80 roundId */,
             int256 answer,
-            /* uint256 startedAt*/
-            uint256 updateAt,
+            /* uint256 startedAt */,
+            uint256 updatedAt,
             /* uint80 answeredInRound */
         ) = feed.latestRoundData();
 
-        // check for state price
+        // Check for stale price
         if (block.timestamp - updatedAt > STALENESS_THRESHOLD) {
             revert StalePrice(asset, updatedAt);
         }
 
-        // check for invalid price
+        // Check for invalid price
         if (answer <= 0) {
             revert InvalidPrice(asset, answer);
         }
 
-        // normalize to 18 decimals
-        // chainlink feeds typically use 8 decimals
+        // Normalize to 18 decimals
+        // Chainlink feeds typically use 8 decimals
         uint8 feedDecimals = feed.decimals();
         uint256 price = uint256(answer);
 
         if (feedDecimals < PRICE_DECIMALS) {
-            // scale up: e.g., 8 decimals -> 18 decimals
+            // Scale up: e.g., 8 decimals -> 18 decimals
             price = price * (10 ** (PRICE_DECIMALS - feedDecimals));
         } else if (feedDecimals > PRICE_DECIMALS) {
-            // scale down (rare case)
+            // Scale down (rare case)
             price = price / (10 ** (feedDecimals - PRICE_DECIMALS));
         }
 
@@ -111,7 +119,7 @@ contract PriceOracle {
 
     function hasPrice(address asset) external view returns (bool) {
         if (useChainlink[asset]) {
-            return assetPriceFeeds[asset]  != address(0);
+            return assetPriceFeeds[asset] != address(0);
         } else {
             return manualPrices[asset] > 0;
         }
