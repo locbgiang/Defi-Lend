@@ -43,7 +43,7 @@ contract Pool {
      * @param _treasury - where protocol fees are sent
      */
     constructor(address addressesProvider, address _treasury) {
-        require(addressProvider != address(0), "Invalid addresses provider");
+        require(addressesProvider != address(0), "Invalid addresses provider");
         require(_treasury != address(0), "Invalid treasury");
 
         ADDRESSES_PROVIDER = addressesProvider;
@@ -160,7 +160,7 @@ contract Pool {
      * @param amount how much to withdraw (e.g. 1000 USDC)
      * @param to where to send withdrawn tokens (can be different from msg.sender)
      */
-    function withdraw(address asset, uint256 amount, address to) external {
+    function withdraw(address asset, uint256 amount, address to) external returns (uint256) {
         // Load reserves configuration for this asset
         // gets aUSDC address, debt token address, ect.
         ReserveData memory reserve = reserves[asset];
