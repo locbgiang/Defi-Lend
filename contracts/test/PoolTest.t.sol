@@ -37,9 +37,16 @@ contract PoolTest is Test {
         uint256 ltv,
         uint256 liquidationThreshold,
         uint256 liquidationBonus
-    )
+    );
 
     function setUp() public {
-        
+        // deploy pool
+        pool = new Pool(addressesProvider, treasury);
+
+        // deploy mock tokens
+        usdc = new MockERC20("USD Coin", "USDC");
+        dai = new MockERC20("Dai Stablecoin", "DAI");
+
+        // deploy aTokens
     }
 }
