@@ -48,5 +48,20 @@ contract PoolTest is Test {
         dai = new MockERC20("Dai Stablecoin", "DAI");
 
         // deploy aTokens
+        aUSDC = new AToken(
+            address(pool),
+            address(usdc),
+            treasury,
+            "Aave USDC",
+            "aUSDC"
+        );
+
+        aDAI = new AToken(
+            address(pool),
+            address(dai),
+            treasury,
+            "Aave DAI",
+            "aDAI"
+        )
     }
 }
