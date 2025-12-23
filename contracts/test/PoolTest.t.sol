@@ -62,6 +62,21 @@ contract PoolTest is Test {
             treasury,
             "Aave DAI",
             "aDAI"
-        )
+        );
+
+        // deploy debt tokens
+        vdUSDC = new VariableDebtToken(
+            address(pool),
+            address(usdc),
+            "Variable Debt USDC",
+            "vdUSDC"
+        );
+
+        vdDAI = new VariableDebtToken(
+            address(pool),
+            address(dai),
+            "Variable Debt DAI",
+            "vdDAI"
+        );
     }
 }
