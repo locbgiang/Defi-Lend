@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {Test} from "forge-std/Test.sol";
 import {Pool} from "../src/contracts/protocol/pool/Pool.sol";
-import {AToken} from "../src/contracts/tokenization/AToken.sol";
+import {AToken} from "../src/contracts/protocol/tokenization/AToken.sol";
 import {VariableDebtToken} from "../src/contracts/protocol/tokenization/VariableDebtToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -78,5 +78,38 @@ contract PoolTest is Test {
             "Variable Debt DAI",
             "vdDAI"
         );
+
+        // initialize reserves
+        pool.initReserve(
+            address(usdc),
+            address(aUSDC),
+            address(vdUSDC),
+            7500,   // 75% LTV
+            8000,   // 80% liquidation threshold
+            500     // 5% liquidation bonus
+        );
+
+        pool.initReserve(
+            address(dai),
+            address(aDAI),
+            address(vdDAI),
+            7500,
+            8000,
+            500
+        );
+
+        // mint tokens to users
+        usdc.mint(user1, 10000e18);
+        usdc.mint(user2, 10000e18);
+        dai.mint(user1, 10000e18);
+        dai.mint(user2, 10000e18);
     }
+
+    // ================= constructor tests =========================
+
+    function testConstructor() public view {
+        assertEq(pool.ADDRESSES_PROVIDER(), addressesProvider);
+        assertEq(pool.treasury(), treasury);
+        assertEq(pool.owner(), address(this));
+    } 
 }
