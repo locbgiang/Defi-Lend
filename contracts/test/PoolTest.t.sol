@@ -111,5 +111,10 @@ contract PoolTest is Test {
         assertEq(pool.ADDRESSES_PROVIDER(), addressesProvider);
         assertEq(pool.treasury(), treasury);
         assertEq(pool.owner(), address(this));
-    } 
+    }
+
+    function testConstructorRevertsZeroAddressProvider() public {
+        vm.expectRevert("Invalid addresses provider");
+        new Pool(address(0), treasury);
+    }
 }
