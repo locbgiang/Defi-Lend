@@ -117,4 +117,16 @@ contract PoolTest is Test {
         vm.expectRevert("Invalid addresses provider");
         new Pool(address(0), treasury);
     }
+
+    function testConstructorRevertsZeroTreasury() public {
+        vm.expectRevert("Invalid treasury");
+        new Pool(addressesProvider, address(0));
+    }
+
+    // ================== initReserves Tests ===========================
+
+    function testIniReserve() public {
+        MockERC20 weth = new MockERC20("Wrapped Ether", "WETH");
+        AToken aWeth = new AToken(address(pool), address(weth), treasury, "Aave WETH", "aWETH");
+    }
 }
