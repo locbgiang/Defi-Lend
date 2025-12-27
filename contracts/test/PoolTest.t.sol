@@ -127,6 +127,35 @@ contract PoolTest is Test {
 
     function testIniReserve() public {
         MockERC20 weth = new MockERC20("Wrapped Ether", "WETH");
-        AToken aWeth = new AToken(address(pool), address(weth), treasury, "Aave WETH", "aWETH");
+        AToken aWETH = new AToken(address(pool), address(weth), treasury, "Aave WETH", "aWETH");
+        VariableDebtToken vdWETH = new VariableDebtToken(address(pool), address(weth), "Variable Debt WETH", "vdWETH");
+
+        vm.expectEmit(true, true, true, true);
+        emit ReserveInitialized(address(weth), address(aWETH), address(vdWETH), 7500, 8000, 500);
+
+        pool.initReserve(
+            address(weth),
+            address(aWETH),
+            address(vdWETH),
+            7500,
+            8000,
+            500
+        );
+
+        (
+            address aTokenAddress,
+            address debtTokenAddress,
+            uint256 liquidationThreshold,
+            uint256 liquidationBonus,
+            uint256 ltv,
+            bool isActive
+        ) = pool.reserves(address(weth));
+
+        assertEq(aTokenAddress, address(aWETH));
+        assertEq(debtTokenAddress, address(vdWETH));
+        assertEq(liquidationThreshold, 8000);
+        assertEq(liquidationBonus, 500);
+        assertEq(ltv, 7500);
+        assertTrue(isActive);
     }
 }
