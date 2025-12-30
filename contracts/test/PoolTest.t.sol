@@ -158,4 +158,22 @@ contract PoolTest is Test {
         assertEq(ltv, 7500);
         assertTrue(isActive);
     }
+
+    function tesInitReserveOnlyOwner() public {
+        vm.prank(user1);
+        vm.expectRevert("Caller is not owner");
+        pool.initReserve(address(0x999), address(0x888), address(0x777), 7500, 8000, 500);
+    }
+
+    function testInitReserveRevertsAlreadyInitialized() public {
+        vm.expectRevert("Reserve already initialized");
+        pool.initReserve(
+            address(usdc),
+            address(aUSDC),
+            address(vdUSDC),
+            7500,
+            8000,
+            500
+        );
+    }
 }
