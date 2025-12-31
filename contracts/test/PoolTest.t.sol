@@ -38,6 +38,10 @@ contract PoolTest is Test {
         uint256 liquidationThreshold,
         uint256 liquidationBonus
     );
+    event Supply(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount);
+    event Withdraw(address indexed reserve, address indexed user, address indexed to, uint256 amount);
+    event Borrow(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount);
+    event Repay(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount);
 
     function setUp() public {
         // deploy pool
@@ -175,5 +179,24 @@ contract PoolTest is Test {
             8000,
             500
         );
+    }
+
+    // ================ supply tests ========================
+
+    function testSupply() public {
+        uint256 supplyAmount = 1000e18;
+        
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+
+        vm.expectEmit(true, true, true, true);
+        emit Supply(address(usdc), user1, user1, supplyAmount);
+
+        pool.supply(address(usdc), supplyAmount, user1);
+        vm.stopPrank();
+
+        assertEq(aUSDC.balanceOf(user1), supplyAmount);
+        assertEq(usdc.balanceOf(user1), 10000e18 - supplyAmount);
+        assertEq(usdc.balanceOf(address(aUSDC)), supplyAmount);
     }
 }
