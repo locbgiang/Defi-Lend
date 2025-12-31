@@ -199,4 +199,61 @@ contract PoolTest is Test {
         assertEq(usdc.balanceOf(user1), 10000e18 - supplyAmount);
         assertEq(usdc.balanceOf(address(aUSDC)), supplyAmount);
     }
+
+    function testSupplyOnBehalfOf() public {
+        uint256 supplyAmount = 500e18;
+
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user2);
+        vm.stopPrank();
+
+        // user1 paid, user2 received aTokens
+        assertEq(usdc.balanceOf(user1), 10000e18 - supplyAmount);
+        assertEq(aUSDC.balanceOf(user1), 0);
+        assertEq(aUSDC.balanceOf(user2), supplyAmount);
+    }
+
+    function testSupplyRevertsZeroAmount() public {
+        vm.prank(user1);
+        vm.expectRevert("Amount must be greater than 0");
+        pool.supply(address(usdc), 0, user1);
+    }
+
+    function testSupplyRevertsInactiveReserve() public {
+        vm.prank(user1);
+        vm.expectRevert("Reserve not active");
+        pool.supply(address(0x999), 100, user1);
+    }
+
+    function testSupplyRevertsZeroOnBehalfOf() public {
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 100);
+        vm.expectRevert("Invalid onBehalfOf address");
+        pool.supply(address(usdc), 100, address(0));
+        vm.stopPrank();
+    }
+
+    // ===================== Withdraw Tests ============================
+
+    function testWithdraw() public {
+        uint256 supplyAmount = 1000e18;
+        uint256 withdrawAmount = 500e18;
+
+        // supply first
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user1);
+
+        // withdraw
+        vm.expectEmit(true, true, true, true);
+        emit Withdraw(address(usdc), user1, user1, withdrawAmount);
+
+        pool.withdraw(address(usdc), withdrawAmount, user1);
+        vm.stopPrank();
+
+        assertEq(aUSDC.balanceOf(user1), supplyAmount - withdrawAmount);
+        assertEq(usdc.balanceOf(user1), 10000e18 - supplyAmount + withdrawAmount);
+        assertEq(usdc.balanceOf(address(aUSDC)), supplyAmount - withdrawAmount);
+    }
 }
