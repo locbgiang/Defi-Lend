@@ -309,5 +309,55 @@ contract PoolTest is Test {
     
     function testBorrow() public {
         uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 300e18;
+
+        // user1 supplies USDC as collateral
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user1);
+        vm.stopPrank();
+
+        // user2 supplies DAI (for liquidity)
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+
+        // user1 borrow DAI
+        vm.startPrank(user1);
+        vm.expectEmit(true, true, true, true);
+        emit Borrow(address(dai), user1, user1, borrowAmount);
+
+        pool.borrow(address(dai), borrowAmount, user1);
+        vm.stopPRank();
+
+        assertEq(vdDAI.balanceOf(user1), borrowAmount);
+        assertEq(dai.balanceOf(user1), 10000e18 + borrowAmount);
+    }
+
+    function testBorrowOnBehalfOf() public {
+        uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 200e18;
+
+        // user1 supplies USDC as collateral
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user1);
+        vm.stopPrank();
+
+        // user2 supplies DAI (for liquidity)
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        // user2 borrows on behalf of user1
+        vm.startPrank(user2);
+        pool.borrow(address(dai), borrowAmount, user1);
+        vm.stopPrank();
+
+        // user1 gets the debt, user2 gets the borrowed tokens
+        assertEq(vdDAI.balanceOf(user1), borrowAmount); // user1 has debt
+        assertEq(vdDAI.balanceOf(user2), 0); // user2 has no debt
+        assertEq(dai.balanceOf(user2), 10000e18 - 2000e18 + borrowAmount); // user2 gets DAI
     }
 }
