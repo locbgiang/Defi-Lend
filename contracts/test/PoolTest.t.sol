@@ -256,4 +256,23 @@ contract PoolTest is Test {
         assertEq(usdc.balanceOf(user1), 10000e18 - supplyAmount + withdrawAmount);
         assertEq(usdc.balanceOf(address(aUSDC)), supplyAmount - withdrawAmount);
     }
+
+    function testWithdrawToAddress() public {
+        uint256 supplyAmount = 1000e18;
+        uint256 withdrawAmount = 300e18;
+
+        // user1 supplies
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user1);
+
+        // user1 withdraws to user2
+        pool.withdraw(address(usdc), withdrawAmount, user2);
+        vm.stopPrank();
+
+        // user1 loses aTokens, user2 gets underlying
+        assertEq(aUSDC.balanceOf(user1), supplyAmount - withdrawAmount);
+        assertEq(usdc.balanceOf(user1), 10000e18 - supplyAmount);
+        assertEq(usdc.balanceOf(user2), 10000e18 + withdrawAmount);
+    }
 }
