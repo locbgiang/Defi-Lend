@@ -275,4 +275,39 @@ contract PoolTest is Test {
         assertEq(usdc.balanceOf(user1), 10000e18 - supplyAmount);
         assertEq(usdc.balanceOf(user2), 10000e18 + withdrawAmount);
     }
+
+    function testWithdrawRevertsZeroAmount() public {
+        vm.prank(user1);
+        vm.expectRevert("Amount must be greater than 0");
+        pool.withdraw(address(usdc), 0, user1);
+    }
+
+    function testWithdrawRevertsInactiveReserve() public {
+        vm.prank(user1);
+        vm.expectRevert("Reserve not active");
+        pool.withdraw(address(0x999), 100, user1);
+    }
+
+    function testWithdrawRevertsZeroToAddress() public {
+        vm.prank(user1);
+        vm.expectRevert("Invalid to address");
+        pool.withdraw(address(usdc), 100, address(0));
+    }
+
+    function testWithdrawRevertsInsufficientBalance() public {
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 100e18);
+        pool.supply(address(usdc), 100e18, user1);
+
+        // try to withdraw more than supplied
+        vm.expectRevert("ERC20: burn amount exceeds balance");
+        pool.withdraw(address(usdc), 200e18, user1);
+        vm.stopPrank();
+    }
+
+    // ======================== Borrow Tests ============================
+    
+    function testBorrow() public {
+        uint256 supplyAmount = 1000e18;
+    }
 }
