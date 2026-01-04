@@ -367,12 +367,6 @@ contract PoolTest is Test {
         pool.borrow(address(dai), 0, user1);
     }
 
-    function testBorrowRevertsZeroAmount() public {
-        vm.prank(user1);
-        vm.expectRevert("Amount must be greater than 0");
-        pool.borrow(address(dai), 0, user1);
-    }
-
     function testBorrowRevertsInactiveReserve() public {
         vm.prank(user1);
         vm.expectRevert("Reserve not active");
@@ -387,7 +381,7 @@ contract PoolTest is Test {
         vm.startPrank(user1);
         usdc.approve(address(pool), supplyAmount);
         pool.supply(address(usdc), supplyAmount, user1);
-        vm.stopPrank()
+        vm.stopPrank();
 
         // try to borrow DAI when no DAI liquidity exists
         vm.startPrank(user1);
@@ -460,5 +454,26 @@ contract PoolTest is Test {
         // user1's debt is reduced, user2 paid
         assertEq(vdDAI.balanceOf(user1), borrowAmount - repayAmount);
         assertEq(dai.balanceOf(user2), 10000e18 - 2000e18 - repayAmount);
+    }
+
+    function testRepayRevertsZeroAmount() public {
+        vm.prank(user1);
+        vm.expectRevert("Amount must be greater than 0");
+        pool.repay(address(dai), 0, user1);
+    }
+
+    function testRepayRevertsInactiveReserve() public {
+        vm.prank(user1);
+        vm.expectRevert("Reserve not active");
+        pool.repay(address(0x999), 100, user1);
+    }
+
+    function testRepayRevertsInsufficientDebt() public {
+        // user1 has no debt
+        vm.startPrank(user1);
+        dai.approve(address(pool), 100e18);
+        vm.expectRevert("Insufficient balance");
+        pool.repay(address(dai), 100e18, user1);
+        vm.stopPrank();
     }
 }
