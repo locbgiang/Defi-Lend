@@ -300,7 +300,7 @@ contract PoolTest is Test {
         pool.supply(address(usdc), 100e18, user1);
 
         // try to withdraw more than supplied
-        vm.expectRevert("ERC20: burn amount exceeds balance");
+        vm.expectRevert("Insufficient balance");
         pool.withdraw(address(usdc), 200e18, user1);
         vm.stopPrank();
     }
@@ -328,7 +328,7 @@ contract PoolTest is Test {
         emit Borrow(address(dai), user1, user1, borrowAmount);
 
         pool.borrow(address(dai), borrowAmount, user1);
-        vm.stopPRank();
+        vm.stopPrank();
 
         assertEq(vdDAI.balanceOf(user1), borrowAmount);
         assertEq(dai.balanceOf(user1), 10000e18 + borrowAmount);
@@ -359,5 +359,106 @@ contract PoolTest is Test {
         assertEq(vdDAI.balanceOf(user1), borrowAmount); // user1 has debt
         assertEq(vdDAI.balanceOf(user2), 0); // user2 has no debt
         assertEq(dai.balanceOf(user2), 10000e18 - 2000e18 + borrowAmount); // user2 gets DAI
+    }
+
+    function testBorrowRevertsZeroAmount() public {
+        vm.prank(user1);
+        vm.expectRevert("Amount must be greater than 0");
+        pool.borrow(address(dai), 0, user1);
+    }
+
+    function testBorrowRevertsZeroAmount() public {
+        vm.prank(user1);
+        vm.expectRevert("Amount must be greater than 0");
+        pool.borrow(address(dai), 0, user1);
+    }
+
+    function testBorrowRevertsInactiveReserve() public {
+        vm.prank(user1);
+        vm.expectRevert("Reserve not active");
+        pool.borrow(address(0x999), 100, user1);
+    }
+
+    function testBorrowRevertsInsufficientLiquidity() public {
+        uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 500e18;
+
+        // user1 supplies USDC
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user1);
+        vm.stopPrank()
+
+        // try to borrow DAI when no DAI liquidity exists
+        vm.startPrank(user1);
+        vm.expectRevert();      // will fail in transferUnderlying due to insufficient balance
+        pool.borrow(address(dai), borrowAmount, user1);
+        vm.stopPrank();
+    }
+
+    // ============================= Repay Tests ========================
+    
+    function testRepay() public {
+        uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 300e18;
+        uint256 repayAmount = 150e18;
+
+        // Setup: supply and borrow
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai), borrowAmount, user1);
+
+        // Repay partial debt
+        dai.approve(address(pool), repayAmount);
+
+        vm.expectEmit(true, true, true, true);
+        emit Repay(address(dai), user1, user1, repayAmount);
+        
+        uint256 repaidAmount = pool.repay(address(dai), repayAmount, user1);
+        vm.stopPrank();
+
+        assertEq(repaidAmount, repayAmount);
+        assertEq(vdDAI.balanceOf(user1), borrowAmount - repayAmount);
+        assertEq(dai.balanceOf(user1), 10000e18 + borrowAmount - repayAmount);
+    }
+
+    function testRepayOnBehalfOf() public {
+        uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 300e18;
+        uint256 repayAmount = 100e18;
+
+        // setup: user1 supplies and borrows
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai), borrowAmount, user1);
+        vm.stopPrank();
+
+        // user2 repays user1's debt
+        vm.startPrank(user2);
+        dai.approve(address(pool), repayAmount);
+        pool.repay(address(dai), repayAmount, user1);
+        vm.stopPrank();
+
+        // user1's debt is reduced, user2 paid
+        assertEq(vdDAI.balanceOf(user1), borrowAmount - repayAmount);
+        assertEq(dai.balanceOf(user2), 10000e18 - 2000e18 - repayAmount);
     }
 }
