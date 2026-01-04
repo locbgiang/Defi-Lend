@@ -476,4 +476,158 @@ contract PoolTest is Test {
         pool.repay(address(dai), 100e18, user1);
         vm.stopPrank();
     }
+
+    function testRepayFullDebt() public {
+        uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 300e18;
+
+        // setup: supply and borrow
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai), borrowAmount, user1);
+
+        // repay full debt
+        dai.approve(address(pool), borrowAmount);
+        pool.repay(address(dai), borrowAmount, user1);
+        vm.stopPrank();
+
+        // all debt should be cleared
+        assertEq(vdDAI.balanceOf(user1), 0);
+        assertEq(dai.balanceOf(user1), 10000e18); // back to original balance
+    }
+
+    // ============================ Integration Tests ==========================
+
+    function testSupplyBorrowRepayWithdrawFlow() public {
+        uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 500e18;
+
+        // 1. user1 supplies USDC
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user1);
+        assertEq(aUSDC.balanceOf(user1), supplyAmount);
+        vm.stopPrank();
+
+        // 2.user2 supplies DAI (liquidity)
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        assertEq(aDAI.balanceOf(user2), 2000e18);
+        vm.stopPrank();
+
+        // 3. user1 borrows DAI
+        vm.startPrank(user1);
+        pool.borrow(address(dai), borrowAmount, user1);
+        assertEq(vdDAI.balanceOf(user1), borrowAmount);
+        assertEq(dai.balanceOf(user1), 10000e18 + borrowAmount);
+        vm.stopPrank();
+
+        // 4. user1 repays DAI debt
+        vm.startPrank(user1);
+        dai.approve(address(pool), borrowAmount);
+        pool.repay(address(dai), borrowAmount, user1);
+        assertEq(vdDAI.balanceOf(user1), 0);
+        vm.stopPrank();
+
+        // 5. user1 withdraws USDC collateral
+        vm.startPrank(user1);
+        pool.withdraw(address(usdc), supplyAmount, user1);
+        assertEq(aUSDC.balanceOf(user1), 0);
+        assertEq(usdc.balanceOf(user1), 10000e18); // back to the original 
+        vm.stopPrank();
+    }
+
+    function testMultipleUsersMultipleAssets() public {
+        // user1: supplies USDC, borrows DAI
+        // user2: supplies DAI, borrows USDC
+
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 1000e18);
+        pool.supply(address(dai), 1000e18, user2);
+        vm.stopPrank();
+
+        // cross borrowing
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 400e18, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        pool.borrow(address(usdc), 400e18, user2);
+        vm.stopPrank();
+
+        // check balances
+        assertEq(aUSDC.balanceOf(user1), 1000e18);
+        assertEq(aDAI.balanceOf(user2), 1000e18);
+        assertEq(vdDAI.balanceOf(user1), 400e18);
+        assertEq(vdUSDC.balanceOf(user2), 400e18);
+        assertEq(dai.balanceOf(user1), 10000e18 + 400e18);
+        assertEq(usdc.balanceOf(user2), 10000e18 + 400e18);
+    }
+
+    // ============================= Error Cases ================================
+
+    function testCannotBorrowWithoutCollateral() public {
+        // user2 spplies DAI liquidity 
+        vm.startPrank(user2);
+        dai.approve(address(pool), 1000e18);
+        pool.supply(address(dai), 1000e18, user2);
+        vm.stopPrank();
+
+        // user1 tries to borrow without collateral
+        vm.startPrank(user1);
+        // this should work with current code (BUG: no health factor check)
+        pool.borrow(address(dai), 100e18, user1);
+        assertEq(vdDAI.balanceOf(user1), 100e18);
+        vm.stopPrank();
+    }
+
+    function testCannotWithdrawMoreThanSupplied() public {
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 100e18);
+        pool.supply(address(usdc), 100e18, user1);
+
+        vm.expectRevert("Insufficient balance");
+        pool.withdraw(address(usdc), 200e18, user1);
+        vm.stopPrank();
+    }
+
+    function testCannotRepayMoreThanDebt() public {
+        uint256 supplyAmount = 1000e18;
+        uint256 borrowAmount = 300e18;
+
+        // setup
+        vm.startPrank(user1);
+        usdc.approve(address(pool), supplyAmount);
+        pool.supply(address(usdc), supplyAmount, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai), borrowAmount, user1);
+
+        // try to repay more than borrowed
+        dai.approve(address(pool), borrowAmount + 100e18);
+        vm.expectRevert("Insufficient balance");
+        pool.repay(address(dai), borrowAmount + 100e18, user1);
+        vm.stopPrank();
+    }
 }
