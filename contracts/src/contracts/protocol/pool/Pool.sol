@@ -6,6 +6,8 @@ import {VariableDebtToken} from "../tokenization/VariableDebtToken.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import {PriceOracle} from "../oracle/PriceOracle.sol";
+
 /*
 Functions:
     1. supply
@@ -28,26 +30,25 @@ contract Pool {
     }
 
     mapping(address => ReserveData) public reserves;
+    address[] public reservesList;
     address public immutable ADDRESSES_PROVIDER;
     address public treasury;
     address public owner;
+    PriceOracle public priceOracle;
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Caller is not owner");
         _;
     }
 
-    /**
-     * @param addressesProvider reference to PoolAddressesProvider 
-     * (registry of protocol addresses)
-     * @param _treasury - where protocol fees are sent
-     */
-    constructor(address addressesProvider, address _treasury) {
+    constructor(address addressesProvider, address _treasury, address _priceOracle) {
         require(addressesProvider != address(0), "Invalid addresses provider");
         require(_treasury != address(0), "Invalid treasury");
+        require(_priceOracle != address(0), "Invalid price oracle");
 
         ADDRESSES_PROVIDER = addressesProvider;
         treasury = _treasury;
+        priceOracle = PriceOracle(_priceOracle);
         owner = msg.sender;
     }
 
@@ -61,12 +62,12 @@ contract Pool {
      * deposit USDC
      */
     function initReserve(
-        address asset,          // the underlying token (USDC address)
-        address aTokenAddress,  // the aTOken for this asset (aUSDC address)
-        address variableDebtTokenAddress,   // the debt token (vdUSDC address)
-        uint256 ltv,                        // Loan-to-Value ratio (how much you can borrow)
-        uint256 liquidationThreshold,       // when position can be liquidated
-        uint256 liquidationBonus            // bonus for liquidation
+        address asset,
+        address aTokenAddress,
+        address variableDebtTokenAddress,
+        uint256 ltv,
+        uint256 liquidationThreshold,
+        uint256 liquidationBonus
     ) external onlyOwner {
         // ensures asset address is not zero
         require(asset != address(0), "Invalid asset");
@@ -102,6 +103,8 @@ contract Pool {
             // isActive: true
             isActive: true
         });
+
+        reservesList.push(asset);
 
         // emit event so frontend/indexers know reserve is ready
         emit ReserveInitialized(
@@ -193,43 +196,82 @@ contract Pool {
      * @param onBehalfOf who gets the debt token (usually msg.sender but can be different)
      */
     function borrow(address asset, uint256 amount, address onBehalfOf) external {
-        // load reserve configuration for this asset
-        // gets the aToken address, debt token address, LTV ect.
-        // example: reserves[USDC] -> gets aUSDC, vdUSDC addresses
         ReserveData memory reserve = reserves[asset];
-
-        // validation: ensures this asset has been initialized
-        // cant borrow an asset that hasn't been set up with initReserve()
         require(reserve.isActive, "Reserve not active");
-
-        // validation: cant borrow 0 tokens
-        // prevent useless transactions
         require(amount > 0, "Amount must be greater than 0");
+        require(onBehalfOf != address(0), "Invalid onBehalfOf address");
 
-        // todo: check health factor > 1
-        // require(_calculateHealthFactor(onBehalfOf) > 1e18, "Health factor too low");
-        // missing critical check
-        // health factor = (collateral value * liquidation threshold) / debt value
-        // must be > 1 
-        // without this, anyone can borrow unlimited amounts
-
-
-        // create debt:
-        // mint debt tokens to track how much is owed
-        // example: borrow 500 USDC - mint 500 vdUSDC debt tokens
-        // these debt tokens represent the loan obligation
+        // mint debt tokens (reflects new debt)
         VariableDebtToken(reserve.variableDebtTokenAddress).mint(onBehalfOf, amount);
 
-        // give borrowed asset:
-        // transfer actual tokens from aToken contract to borrower
-        // example: transfer 500 USDC from aUSDC contract to msg.sender
-        // aToken contract had this USDC from other users' deposits
+        // require health factor >= 1 after new debt
+        ( , , , , , uint256 healthFactor) = getUserAccountData(onBehalfOf);
+        require(healthFactor >= 1e18, "Health factor too low");
+
+        // transfer borrowed tokens to caller (liquidity comes from aToken holdings)
         AToken(reserve.aTokenAddress).transferUnderlying(msg.sender, amount);
 
-        // emit event:
-        // log this borrow on the blockchain
-        // frontends/indexers can track who borrowed what
         emit Borrow(asset, msg.sender, onBehalfOf, amount);
+    }
+
+    function getUserAccountData(address user) public view returns (
+        uint256 totalCollateralBase,
+        uint256 totalDebtBase,
+        uint256 availableBorrowsBase,
+        uint256 currentLiquidationThreshold,
+        uint256 ltv,
+        uint256 healthFactor
+    ) {
+        totalCollateralBase = 0;
+        totalDebtBase = 0;
+        uint256 avgLtvWeighted = 0;
+        uint256 avgLiquidationThresholdWeighted = 0;
+
+        for (uint256 i = 0; i < reservesList.length; i++) {
+            address asset = reservesList[i];
+            ReserveData memory reserve = reserves[asset];
+            if (!reserve.isActive) continue;
+
+            uint256 aTokenBalance = AToken(reserve.aTokenAddress).balanceOf(user);
+            uint256 debtBalance = VariableDebtToken(reserve.variableDebtTokenAddress).balanceOf(user);
+            if (aTokenBalance == 0 && debtBalance == 0) continue;
+
+            uint256 assetPrice = priceOracle.getAssetPrice(asset); // 18 decimals
+
+            if (aTokenBalance > 0) {
+                uint256 collateralValue = (aTokenBalance * assetPrice) / 1e18;
+                totalCollateralBase += collateralValue;
+                avgLtvWeighted += collateralValue * reserve.ltv;
+                avgLiquidationThresholdWeighted += collateralValue * reserve.liquidationThreshold;
+            }
+
+            if (debtBalance > 0) {
+                uint256 debtValue = (debtBalance * assetPrice) / 1e18;
+                totalDebtBase += debtValue;
+            }
+        }
+
+        if (totalCollateralBase > 0) {
+            ltv = avgLtvWeighted / totalCollateralBase;
+            currentLiquidationThreshold = avgLiquidationThresholdWeighted / totalCollateralBase;
+        } else {
+            ltv = 0;
+            currentLiquidationThreshold = 0;
+        }
+
+        uint256 maxBorrowBase = (totalCollateralBase * ltv) / 10000;
+        availableBorrowsBase = maxBorrowBase > totalDebtBase ? maxBorrowBase - totalDebtBase : 0;
+
+        healthFactor = _calculateHealthFactor(totalCollateralBase, totalDebtBase, currentLiquidationThreshold);
+    }
+
+    function _calculateHealthFactor(
+        uint256 totalCollateralBase,
+        uint256 totalDebtBase,
+        uint256 liquidationThreshold
+    ) internal pure returns (uint256) {
+        if (totalDebtBase == 0) return type(uint256).max;
+        return (totalCollateralBase * liquidationThreshold * 1e18) / (totalDebtBase * 10000);
     }
 
     /**

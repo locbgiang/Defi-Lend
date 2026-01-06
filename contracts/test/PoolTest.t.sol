@@ -6,6 +6,7 @@ import {Pool} from "../src/contracts/protocol/pool/Pool.sol";
 import {AToken} from "../src/contracts/protocol/tokenization/AToken.sol";
 import {VariableDebtToken} from "../src/contracts/protocol/tokenization/VariableDebtToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {PriceOracle} from "../src/contracts/protocol/oracle/PriceOracle.sol";
 
 contract MockERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
@@ -44,8 +45,13 @@ contract PoolTest is Test {
     event Repay(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount);
 
     function setUp() public {
-        // deploy pool
-        pool = new Pool(addressesProvider, treasury);
+        // deploy price oracle and set stablecoin prices
+        PriceOracle oracle = new PriceOracle();
+        oracle.setManualPrice(address(usdc), 1e18);
+        oracle.setManualPrice(address(dai), 1e18);
+
+        // deploy pool with oracle address
+        pool = new Pool(addressesProvider, treasury, address(oracle));
 
         // deploy mock tokens
         usdc = new MockERC20("USD Coin", "USDC");
@@ -119,12 +125,12 @@ contract PoolTest is Test {
 
     function testConstructorRevertsZeroAddressProvider() public {
         vm.expectRevert("Invalid addresses provider");
-        new Pool(address(0), treasury);
+        new Pool(address(0), treasury, address(0x1)); // pass dummy oracle address
     }
 
     function testConstructorRevertsZeroTreasury() public {
         vm.expectRevert("Invalid treasury");
-        new Pool(addressesProvider, address(0));
+        new Pool(addressesProvider, address(0), address(0x1)); // pass dummy oracle address
     }
 
     // ================== initReserves Tests ===========================
