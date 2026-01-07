@@ -45,6 +45,10 @@ contract PoolTest is Test {
     event Repay(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount);
 
     function setUp() public {
+        // deploy mock tokens FIRST (was after pool/oracle before)
+        usdc = new MockERC20("USD Coin", "USDC");
+        dai  = new MockERC20("Dai Stablecoin", "DAI");
+
         // deploy price oracle and set stablecoin prices
         PriceOracle oracle = new PriceOracle();
         oracle.setManualPrice(address(usdc), 1e18);
@@ -52,10 +56,6 @@ contract PoolTest is Test {
 
         // deploy pool with oracle address
         pool = new Pool(addressesProvider, treasury, address(oracle));
-
-        // deploy mock tokens
-        usdc = new MockERC20("USD Coin", "USDC");
-        dai = new MockERC20("Dai Stablecoin", "DAI");
 
         // deploy aTokens
         aUSDC = new AToken(
@@ -588,17 +588,16 @@ contract PoolTest is Test {
     // ============================= Error Cases ================================
 
     function testCannotBorrowWithoutCollateral() public {
-        // user2 spplies DAI liquidity 
+        // user2 supplies DAI liquidity 
         vm.startPrank(user2);
         dai.approve(address(pool), 1000e18);
         pool.supply(address(dai), 1000e18, user2);
         vm.stopPrank();
 
-        // user1 tries to borrow without collateral
+        // user1 tries to borrow without collateral -> should revert due to health factor
         vm.startPrank(user1);
-        // this should work with current code (BUG: no health factor check)
+        vm.expectRevert("Health factor too low");
         pool.borrow(address(dai), 100e18, user1);
-        assertEq(vdDAI.balanceOf(user1), 100e18);
         vm.stopPrank();
     }
 

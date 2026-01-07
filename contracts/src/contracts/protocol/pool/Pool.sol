@@ -325,8 +325,17 @@ contract Pool {
         uint256 debtToCover,
         bool receiveAToken
     ) external {
-        // todo: implement liquidation logic
-        revert("Not implemented yet");
+        // validations
+        ReserveData memory reserveCollateral = reserves[collateralAsset];
+        ReserveData memory reserveDebt = reserves[debtAsset];
+
+        require(reserveCollateral.isActive, "Collateral reserve not active");
+        require(reserveDebt.isActive, "Debt reserve not active");
+        require(user != address(0), "Invalid user");
+        require(debtToCover > 0, "Amount must be > 0");
+
+        // ensure the user is liquidatable
+        (,,,,, uint256 healthFactor) = getUserAccountData(user);
     }
 
     // events
