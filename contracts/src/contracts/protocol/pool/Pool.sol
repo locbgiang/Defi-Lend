@@ -336,6 +336,27 @@ contract Pool {
 
         // ensure the user is liquidatable
         (,,,,, uint256 healthFactor) = getUserAccountData(user);
+        require(healthFactor < 1e18, "Health factor >= 1");
+        
+        // user's current debt (in debtAsset units)
+        uint256 userDebt = VariableDebtToken(reserveDebt.variableDebtTokenAddress).balanceOf(user);
+        require(userDebt > 0, "User has no debt");
+
+        // cap the debt to cover by the user's actual debt
+        uint256 actualDebtToCover = debtToCover > userDebt ? userDebt : debtToCover;
+
+        // transfer debtAsset from liquidator to aToken contract (repay on behalf)
+        IERC20(debtAsset).safeTransferFrom(msg.sender, reserveDebt.aTokenAddress, actualDebtToCover);
+
+        // burn user's debt tokens
+        VariableDebtToken(reserveDebt.variableDebtTokenAddress).burn(user, actualDebtToCover);
+
+        // prices (18 decimals)
+        uint256 priceDebt = priceOracle.getAssetPrice(debtAsset);
+        uint256 priceCollateral = priceOracle.getAssetPrice(collateralAsset);
+
+        // compute max collateral to seize
+        
     }
 
     // events
