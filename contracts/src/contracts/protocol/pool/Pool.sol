@@ -358,7 +358,7 @@ contract Pool {
         // compute max collateral to seize
         // collateralAmount = actualDebtToCover * priceDebt * (10000 + bonus) / (10000 * priceCollateral)
         uint256 bonusFactor = 10000 + reserveCollateral.liquidationBonus;
-        uint256 collateralAmount = (actualDebtToCover * priceDebt + bonusFactor) / (10000 * priceCollateral);
+        uint256 collateralAmount = (actualDebtToCover * priceDebt * bonusFactor) / (10000 * priceCollateral);
 
         // user's collateral aToken balance
         uint256 userCollateralATokens = AToken(reserveCollateral.aTokenAddress).balanceOf(user);

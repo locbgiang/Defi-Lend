@@ -635,4 +635,19 @@ contract PoolTest is Test {
         pool.repay(address(dai), borrowAmount + 100e18, user1);
         vm.stopPrank();
     }
+
+    function testLiquidation_receiveUnderlying() public {
+        address liquidator = address(0x9);
+
+        // user1 supplies USDC collateral
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        // user2 supplies DAI liquidity
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18);
+    }
 }
