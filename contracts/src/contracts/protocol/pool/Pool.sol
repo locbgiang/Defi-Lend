@@ -356,7 +356,45 @@ contract Pool {
         uint256 priceCollateral = priceOracle.getAssetPrice(collateralAsset);
 
         // compute max collateral to seize
-        
+        // collateralAmount = actualDebtToCover * priceDebt * (10000 + bonus) / (10000 * priceCollateral)
+        uint256 bonusFactor = 10000 + reserveCollateral.liquidationBonus;
+        uint256 collateralAmount = (actualDebtToCover * priceDebt + bonusFactor) / (10000 * priceCollateral);
+
+        // user's collateral aToken balance
+        uint256 userCollateralATokens = AToken(reserveCollateral.aTokenAddress).balanceOf(user);
+
+        // if trying to seize more than available, cap and adjus debt covered to match collateral balance
+        if (collateralAmount > userCollateralATokens) {
+            // cap collateral to user's balance
+            collateralAmount = userCollateralATokens;
+
+            // recompute actualDebtToCover based on capped collateral;
+            // actualDebt = collateralAmount * priceCollateral * 10000 / (priceDebt * bonusFactor)
+            actualDebtToCover = (collateralAmount * priceCollateral * 10000) / (priceDebt * bonusFactor);
+
+            // note: small rounding may leave tiny residuals; it's acceptable here
+        }
+
+        // transfer seize collateral to liquidator 
+        if (receiveAToken) {
+            // transfer aToken shares from user to liquidator (on-liquidtion transfer)
+            // AToken should expose transferOnLiquidation callable by Pool
+            AToken(reserveCollateral.aTokenAddress).transferOnLiquidation(user, msg.sender, collateralAmount);
+        } else {
+            // burn user's aTokens and transfer underlying to liquidator
+            AToken(reserveCollateral.aTokenAddress).burn(user, collateralAmount);
+            AToken(reserveCollateral.aTokenAddress).transferUnderlying(msg.sender, collateralAmount);
+        }
+
+        emit LiquidationCall(
+            collateralAsset,
+            debtAsset,
+            user,
+            actualDebtToCover,
+            collateralAmount,
+            msg.sender,
+            receiveAToken
+        );
     }
 
     // events
