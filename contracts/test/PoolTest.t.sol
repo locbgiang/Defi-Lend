@@ -648,6 +648,32 @@ contract PoolTest is Test {
         // user2 supplies DAI liquidity
         vm.startPrank(user2);
         dai.approve(address(pool), 2000e18);
-        pool.supply(address(dai), 2000e18);
+        pool.supply(address(dai), 2000e18, user1);
+        vm.stopPrank();
+
+        // user1 borrows DAI (user portion to allow liquidation later)
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 700e18, user1);
+        vm.stopPrank();
+
+        // drop USDC price so user1 becomes undercollateralized
+        PriceOracle oracle = PriceOracle(address(pool.priceOracle()));
+        oracle.setManualPrice(address(usdc), 0.5e18); // USDC -> $0.5
+
+        // liquidator repays part of user1 
+        vm.startPrank(liquidator);
+        // mint/assign DAI to liquidator in tests
+        dai.mint(liquidator, 800e18);
+        dai.approve(address(pool), 200e18);
+
+        // expect revert? no - should succeed
+        pool.liquidationCall(address(usdc), address(dai), user1, 200e18, false);
+        vm.stopPrank();
+
+        // assertions:
+        // - user1 vdDAI balance decreased
+        // - liquidator received underlying USDC (increased balance)
+        assertLt(vdDAI.balanceOf(user1), 700e18);
+        assertGt(usdc.balanceOf(liquidator), 0);
     }
 }
