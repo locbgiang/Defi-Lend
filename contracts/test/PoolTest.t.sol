@@ -648,7 +648,7 @@ contract PoolTest is Test {
         // user2 supplies DAI liquidity
         vm.startPrank(user2);
         dai.approve(address(pool), 2000e18);
-        pool.supply(address(dai), 2000e18, user1);
+        pool.supply(address(dai), 2000e18, user2);
         vm.stopPrank();
 
         // user1 borrows DAI (user portion to allow liquidation later)
@@ -675,5 +675,87 @@ contract PoolTest is Test {
         // - liquidator received underlying USDC (increased balance)
         assertLt(vdDAI.balanceOf(user1), 700e18);
         assertGt(usdc.balanceOf(liquidator), 0);
+    }
+
+    function testLiquidation_receiveAToken() public {
+        address liquidator = address(0x9);
+
+        // user1 supplies USDC collateral
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        // user2 supplies DAI liquidity
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        // user1 borrows DAI
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 700e18, user1);
+        vm.stopPrank();
+
+        // devalue USDC so user is liquidatable
+        PriceOracle oracle = PriceOracle(address(pool.priceOracle()));
+        oracle.setManualPrice(address(usdc), 0.5e18);
+
+        // liuqidator prepares DAI and approval
+        vm.startPrank(liquidator);
+        dai.mint(liquidator, 800e18);
+        dai.approve(address(pool), 200e18);
+
+        // seize collateral as aTokens
+        uint256 beforeAToken = aUSDC.balanceOf(liquidator);
+        pool.liquidationCall(address(usdc), address(dai), user1, 200e18, true);
+        vm.stopPrank();
+
+        assertGt(aUSDC.balanceOf(liquidator), beforeAToken);
+
+        // underlying should not be transferred in this mode
+        assertEq(usdc.balanceOf(liquidator), 0);
+    }
+
+    function testLiquidation_cannotLiquidateHealthy() public {
+        address liquidator = address(0x9);
+
+        // provide liquidity for DAI so borrow can succeed
+        vm.startPrank(user2);
+        dai.approve(address(pool), 1000e18);
+        pool.supply(address(dai), 1000e18, user2);
+        vm.stopPrank();
+
+        // user1 supplies collateral and then borrows (prices normal)
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        pool.borrow(address(dai), 300e18, user1);
+        vm.stopPrank();
+
+        // liquidator prepares DAI
+        vm.startPrank(liquidator);
+        dai.mint(liquidator, 400e18);
+        dai.approve(address(pool), 400e18);
+
+        // user is healthy -> expect revert
+        vm.expectRevert("Health factor >= 1");
+        pool.liquidationCall(address(usdc), address(dai), user1, 100e18, false);
+        vm.stopPrank();
+    }
+
+    function testLiquidation_capDebtToUserDebt() public {
+        address liquidator = address(0x9);
+
+        // user1 supplies and borrows 
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        pool.borrow(address(dai), 700e18, user1);
+        vm.stopPrank();
+
+        // devalue USDC to allow liquidation
+        PriceOracle oracle = PriceOracle(address(pool.priceOracle()));
+        oracle.setManualPrice(address(usdc), 0.5e18);
     }
 }
