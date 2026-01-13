@@ -325,57 +325,65 @@ contract Pool {
         uint256 debtToCover,
         bool receiveAToken
     ) external {
-        // basic validations (read from storage inline to avoid extra locals)
-        require(reserves[collateralAsset].isActive, "Collateral reserve not active");
-        require(reserves[debtAsset].isActive, "Debt reserve not active");
+        // validations
+        ReserveData memory reserveCollateral = reserves[collateralAsset];
+        ReserveData memory reserveDebt = reserves[debtAsset];
+
+        require(reserveCollateral.isActive, "Collateral reserve not active");
+        require(reserveDebt.isActive, "Debt reserve not active");
         require(user != address(0), "Invalid user");
         require(debtToCover > 0, "Amount must be > 0");
 
         // ensure the user is liquidatable
         (,,,,, uint256 healthFactor) = getUserAccountData(user);
         require(healthFactor < 1e18, "Health factor >= 1");
-
+        
         // user's current debt (in debtAsset units)
-        uint256 userDebt = VariableDebtToken(reserves[debtAsset].variableDebtTokenAddress).balanceOf(user);
+        uint256 userDebt = VariableDebtToken(reserveDebt.variableDebtTokenAddress).balanceOf(user);
         require(userDebt > 0, "User has no debt");
 
         // cap the debt to cover by the user's actual debt
         uint256 actualDebtToCover = debtToCover > userDebt ? userDebt : debtToCover;
 
         // transfer debtAsset from liquidator to aToken contract (repay on behalf)
-        IERC20(debtAsset).safeTransferFrom(msg.sender, reserves[debtAsset].aTokenAddress, actualDebtToCover);
+        IERC20(debtAsset).safeTransferFrom(msg.sender, reserveDebt.aTokenAddress, actualDebtToCover);
 
         // burn user's debt tokens
-        VariableDebtToken(reserves[debtAsset].variableDebtTokenAddress).burn(user, actualDebtToCover);
+        VariableDebtToken(reserveDebt.variableDebtTokenAddress).burn(user, actualDebtToCover);
 
-        // fetch prices (18 decimals)
+        // prices (18 decimals)
         uint256 priceDebt = priceOracle.getAssetPrice(debtAsset);
         uint256 priceCollateral = priceOracle.getAssetPrice(collateralAsset);
 
-        // compute collateral to seize
-        uint256 bonusFactor = 10000 + reserves[collateralAsset].liquidationBonus;
+        // compute max collateral to seize
+        // collateralAmount = actualDebtToCover * priceDebt * (10000 + bonus) / (10000 * priceCollateral)
+        uint256 bonusFactor = 10000 + reserveCollateral.liquidationBonus;
         uint256 collateralAmount = (actualDebtToCover * priceDebt * bonusFactor) / (10000 * priceCollateral);
 
         // user's collateral aToken balance
-        uint256 userCollateralATokens = AToken(reserves[collateralAsset].aTokenAddress).balanceOf(user);
+        uint256 userCollateralATokens = AToken(reserveCollateral.aTokenAddress).balanceOf(user);
 
-        // cap collateral if necessary and recompute actualDebtToCover
+        // if trying to seize more than available, cap and adjus debt covered to match collateral balance
         if (collateralAmount > userCollateralATokens) {
+            // cap collateral to user's balance
             collateralAmount = userCollateralATokens;
 
-            // recompute actualDebtToCover based on capped collateral
+            // recompute actualDebtToCover based on capped collateral;
             // actualDebt = collateralAmount * priceCollateral * 10000 / (priceDebt * bonusFactor)
             actualDebtToCover = (collateralAmount * priceCollateral * 10000) / (priceDebt * bonusFactor);
+
+            // note: small rounding may leave tiny residuals; it's acceptable here
         }
 
-        // transfer seized collateral to liquidator
+        // transfer seize collateral to liquidator 
         if (receiveAToken) {
-            // transfer aToken shares from user to liquidator (AToken must expose this)
-            AToken(reserves[collateralAsset].aTokenAddress).transferOnLiquidation(user, msg.sender, collateralAmount);
+            // transfer aToken shares from user to liquidator (on-liquidtion transfer)
+            // AToken should expose transferOnLiquidation callable by Pool
+            AToken(reserveCollateral.aTokenAddress).transferOnLiquidation(user, msg.sender, collateralAmount);
         } else {
             // burn user's aTokens and transfer underlying to liquidator
-            AToken(reserves[collateralAsset].aTokenAddress).burn(user, collateralAmount);
-            AToken(reserves[collateralAsset].aTokenAddress).transferUnderlying(msg.sender, collateralAmount);
+            AToken(reserveCollateral.aTokenAddress).burn(user, collateralAmount);
+            AToken(reserveCollateral.aTokenAddress).transferUnderlying(msg.sender, collateralAmount);
         }
 
         emit LiquidationCall(

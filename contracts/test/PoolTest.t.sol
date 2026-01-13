@@ -757,5 +757,45 @@ contract PoolTest is Test {
         // devalue USDC to allow liquidation
         PriceOracle oracle = PriceOracle(address(pool.priceOracle()));
         oracle.setManualPrice(address(usdc), 0.5e18);
+
+        // liquidator mints more DAI than user's debt and approves
+        vm.startPrank(liquidator);
+        dai.mint(liquidator, 2000e18);
+        dai.approve(address(pool), 2000e18);
+
+        uint256 beforeLiquidatorDai = dai.balanceOf(liquidator);
+
+        // pass larger debtToCover than user debt (100018 > 700e18)
+        pool.liquidationCall(address(usdc), address(dai), user1, 100e18, false);
+        vm.stopPrank();
+
+        // user's debt should be fully cleared (or at least reduced)
+        assertEq(vdDAI.balanceOf(user1), 0);
+
+        // liquidator spent exactly the user's debt (700e18) or the computed amount
+        assertEq(dai.balanceOf(liquidator), beforeLiquidatorDai - 700e18);
+    }
+
+    function testLiquidation_requiresApproval() public {
+        address liquidator = address(0x9);
+
+        // user1 supplies and borrows and then becomes undercollateralized
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        pool.borrow(address(dai), 700e18, user1);
+        vm.stopPrank();
+
+        PriceOracle oracle = PriceOracle(address(pool.priceOracle()));
+        oracle.setManualPrice(address(usdc), 0.5e18);
+
+        // liquidator has DAI but does NOT approve pool
+        vm.startPrank(liquidator);
+        dai.mint(liquidator, 800e18);
+
+        // no approve -> transferFrom should revert; expect generic ERC20 revert
+        vm.expectRevert();
+        pool.liquidationCall(address(usdc), address(dai), user1, 100e18, false);
+        vm.stopPrank();
     }
 }
