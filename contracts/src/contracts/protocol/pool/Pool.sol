@@ -325,67 +325,105 @@ contract Pool {
         uint256 debtToCover,
         bool receiveAToken
     ) external {
-        // validations
-        ReserveData memory reserveCollateral = reserves[collateralAsset];
-        ReserveData memory reserveDebt = reserves[debtAsset];
-
-        require(reserveCollateral.isActive, "Collateral reserve not active");
-        require(reserveDebt.isActive, "Debt reserve not active");
+        // keep this external function minimal to avoid stack pressure in the caller
         require(debtToCover > 0, "Amount must be greater than 0");
 
         // a position can be liquidated only if health factor < 1
         ( , , , , , uint256 healthFactor) = getUserAccountData(user);
-        require(healthFactor < 1e18, "Health factor > 1");
+        require(healthFactor < 1e18, "Health factor >= 1");
 
-        // price (18 decimals)
+        // delegate full logic to internal helper (fewer live locals here)
+        _executeLiquidation(collateralAsset, debtAsset, user, debtToCover, receiveAToken);
+    }
+
+    // small internal helper to perform token transfers / burns and emit event
+    function _executeLiquidation(
+        address collateralAsset,
+        address debtAsset,
+        address user,
+        uint256 debtToCover,
+        bool receiveAToken
+    ) internal {
+        // compute amounts in a separate function to limit live locals at the point of transfers
+        (uint256 actualDebtToCover, uint256 collAmount) = _calculateLiquidationAmounts(
+            collateralAsset,
+            debtAsset,
+            user,
+            debtToCover
+        );
+
+        // pull debt asset into the pool (requiring liquidator approval for the pool),
+        // then forward to the reserve/aToken. This ensures transfer semantics are explicit.
+        IERC20(debtAsset).safeTransferFrom(msg.sender, address(this), actualDebtToCover);
+        IERC20(debtAsset).safeTransfer(reserves[debtAsset].aTokenAddress, actualDebtToCover);
+
+        // reduce user's debt
+        VariableDebtToken(reserves[debtAsset].variableDebtTokenAddress).burn(user, actualDebtToCover);
+
+        // transfer collateral to liquidator
+        if (receiveAToken) {
+            // use AToken.transferOnLiquidation to avoid requiring the user's ERC20 allowance
+            AToken(reserves[collateralAsset].aTokenAddress).transferOnLiquidation(user, msg.sender, collAmount);
+        } else {
+            // burn user's aTokens and send underlying to liquidator
+            AToken(reserves[collateralAsset].aTokenAddress).burn(user, collAmount);
+            AToken(reserves[collateralAsset].aTokenAddress).transferUnderlying(msg.sender, collAmount);
+        }
+
+        emit LiquidationCall(
+            collateralAsset,
+            debtAsset,
+            user,
+            actualDebtToCover,
+            collAmount,
+            msg.sender,
+            receiveAToken
+        );
+    }
+
+    // helper that performs all computations and validation, returns the final amounts
+    function _calculateLiquidationAmounts(
+        address collateralAsset,
+        address debtAsset,
+        address user,
+        uint256 debtToCover
+    ) internal view returns (uint256 actualDebtToCover, uint256 collAmount) {
+        ReserveData storage reserveCollateral = reserves[collateralAsset];
+        ReserveData storage reserveDebt = reserves[debtAsset];
+
+        require(reserveCollateral.isActive, "Collateral reserve not active");
+        require(reserveDebt.isActive, "Debt reserve not active");
+
         uint256 priceDebt = priceOracle.getAssetPrice(debtAsset);
         uint256 priceCollateral = priceOracle.getAssetPrice(collateralAsset);
 
-        // liquidation params
-        uint256 liquidationBonus = reserveCollateral.liquidationBonus;      // e.g., 500 = 5%
+        uint256 liquidationBonus = reserveCollateral.liquidationBonus; // basis points, e.g. 500 = 5%
 
-        // user collateral balance (aToken units)
         uint256 userCollateralBalance = AToken(reserveCollateral.aTokenAddress).balanceOf(user);
-        require(userCollateralBalance > 0, "User has no collateral"); 
+        require(userCollateralBalance > 0, "User has no collateral");
 
-        // determine maximum debt that can be covered given user's collateral
-        // maxDebtToCover = userCollateralBalance * priceCollateral * 1000 / ((1000 + bonus) * priceDebt)
-        uint256 numerator = userCollateralBalance * priceCollateral * 1000;
-        uint256 denominator = (1000 + liquidationBonus) * priceDebt;
+        // cap by the user's outstanding debt as well
+        uint256 userDebtBalance = VariableDebtToken(reserveDebt.variableDebtTokenAddress).balanceOf(user);
+
+        // maxDebtToCover = userCollateralBalance * priceCollateral * 10000 / ((10000 + bonus) * priceDebt)
+        uint256 numerator = userCollateralBalance * priceCollateral * 10000;
+        uint256 denominator = (10000 + liquidationBonus) * priceDebt;
         uint256 maxDebtToCover = denominator == 0 ? 0 : numerator / denominator;
 
-        // actual debt to cover is min (requested, max)
-        uint256 actualDebtToCover = debtToCover;
+        actualDebtToCover = debtToCover;
         if (actualDebtToCover > maxDebtToCover) {
             actualDebtToCover = maxDebtToCover;
         }
+        if (actualDebtToCover > userDebtBalance) {
+            actualDebtToCover = userDebtBalance;
+        }
         require(actualDebtToCover > 0, "Nothing to liquidate");
 
-        // transfer debt asset from liquidator to the aToken of the debt reserve
-        IERC20(debtAsset).safeTransferFrom(msg.sender, reserveDebt.aTokenAddress, actualDebtToCover);
+        // collateral = actualDebtToCover * priceDebt * (10000 + bonus) / (10000 * priceCollateral)
+        collAmount = (actualDebtToCover * priceDebt * (10000 + liquidationBonus)) / (10000 * priceCollateral);
 
-        // reduce user's debt
-        VariableDebtToken(reserveDebt.variableDebtTokenAddress).burn(user, actualDebtToCover);
-
-        // calculate collateral amount to liquidate:
-        // collateralAmount = actualDebtToCover * priceDebt * (1000 + bonus) / (1000 * priceCollateral)
-        uint256 collAmount = (actualDebtToCover * priceDebt * (1000 + liquidationBonus)) / (1000 * priceCollateral);
-
-        // cap by user's collateral balance (shouldn't exceed due to maxDebtToCover math, but be safe)
         if (collAmount > userCollateralBalance) {
-            colAmount = userCollateralBalance;
-        }
-
-        // transfer collateral to liquidator 
-        if (receiveAToken) {
-            // transfer aToken from user to liquidator (requires approval) or special aToken implementation
-            IERC20(reserveCollateral.aTokenAddress).safeTransferFrom(user, msg.sender, collAmount);
-        } else {
-            // burn user's aTokens and send underlying to 
-            AToken(reserveCollateral.aTokenAddress).burn(user, collAmount);
-            AToken(reserveCollateral.aTokenAddress).transferUnderlying(msg.sender, collAmount);
-
-            emit Liquidation
+            collAmount = userCollateralBalance;
         }
     }
 
