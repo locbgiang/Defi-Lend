@@ -317,7 +317,13 @@ contract Pool {
         return amount;
     }
 
-    // 5. liquidation - Todo: implement price oracle and health factor
+    // liquidation - Todo: implement price oracle and health factor
+    /**
+     * 1. trigger: a user's health factor drops bellow 1 (undercollateralized)
+     * 2. liquidator action: repays up to 50% of the borrower's debt
+     * 3. reward: liquidator receieves collateral worth 105% of debt repaid (5% bonus)
+     * 4. result: borrower's position becomes healthier liquidator profits
+     */
     function liquidationCall(
         address collateralAsset,
         address debtAsset,
@@ -325,108 +331,83 @@ contract Pool {
         uint256 debtToCover,
         bool receiveAToken
     ) external {
-        // keep this external function minimal to avoid stack pressure in the caller
-        require(debtToCover > 0, "Amount must be greater than 0");
+        // use to access the collateral asset's configuration
+        ReserveData memory collateralReserve = reserves[collateralAsset];
+        // use to access the debt asset's configurations
+        ReserveData memory debtReserve = reserves[debtAsset];
 
-        // a position can be liquidated only if health factor < 1
-        ( , , , , , uint256 healthFactor) = getUserAccountData(user);
-        require(healthFactor < 1e18, "Health factor >= 1");
+        // check to see if the collateral reserve is active
+        // if someone tries to liquidate using a random token address that was never set up
+        require(collateralReserve.isActive, "Collateral reserve not active");
+        require(debtReserve.isActive, "Debt reserve not active");
+        require(debtToCover > 0, "Debt to cover must be greater than 0");
+        require(user != msg.sender, "Cannot liquidate yourself");
 
-        // delegate full logic to internal helper (fewer live locals here)
-        _executeLiquidation(collateralAsset, debtAsset, user, debtToCover, receiveAToken);
-    }
+        (
+            uint256 totalCollateralBase,
+            uint256 totalDebtBase,
+            ,
+            uint256 currentLiquidationThreshold,
+            ,
+            uint256 healthFactor
+        ) = getUserAccountData(user);
 
-    // small internal helper to perform token transfers / burns and emit event
-    function _executeLiquidation(
-        address collateralAsset,
-        address debtAsset,
-        address user,
-        uint256 debtToCover,
-        bool receiveAToken
-    ) internal {
-        // compute amounts in a separate function to limit live locals at the point of transfers
-        (uint256 actualDebtToCover, uint256 collAmount) = _calculateLiquidationAmounts(
-            collateralAsset,
-            debtAsset,
-            user,
-            debtToCover
-        );
+        require(healthFactor < 1e18, "Health factor not below threshold");
 
-        // pull debt asset into the pool (requiring liquidator approval for the pool),
-        // then forward to the reserve/aToken. This ensures transfer semantics are explicit.
-        IERC20(debtAsset).safeTransferFrom(msg.sender, address(this), actualDebtToCover);
-        IERC20(debtAsset).safeTransfer(reserves[debtAsset].aTokenAddress, actualDebtToCover);
+        uint256 userDebt = VariableDebtToken(debtReserve.variableDebtTokenAddress).balanceOf(user);
+        require(userDebt > 0, "User has no debt for this asset");
 
-        // reduce user's debt
-        VariableDebtToken(reserves[debtAsset].variableDebtTokenAddress).burn(user, actualDebtToCover);
+        uint256 maxLiquidatableDebt = (userDebt + 5000) / 1000;
+        
+        uint256 actualDebtToCover = debtToCover > maxLiquidatableDebt ? maxLiquidatableDebt : debtToCover;
 
-        // transfer collateral to liquidator
-        if (receiveAToken) {
-            // use AToken.transferOnLiquidation to avoid requiring the user's ERC20 allowance
-            AToken(reserves[collateralAsset].aTokenAddress).transferOnLiquidation(user, msg.sender, collAmount);
-        } else {
-            // burn user's aTokens and send underlying to liquidator
-            AToken(reserves[collateralAsset].aTokenAddress).burn(user, collAmount);
-            AToken(reserves[collateralAsset].aTokenAddress).transferUnderlying(msg.sender, collAmount);
+        actualDebtToCover = actualDebtToCover > userDebt ? userDebt : actualDebtToCover;
+
+        uint256 debtAssetPrice = priceOracle.getAssetPrice(debtAsset);
+        uint256 collateralAssetPrice = priceOracle.getAssetPrice(collateralAsset);
+
+        uint256 debtAmountInBase = (actualDebtToCover * debtAssetPrice) / 1e18;
+        
+        uint256 collateralAmountWithBonus = (debtAmountInBase * (10000 + collateralReserve.liquidationBonus)) / 10000;
+
+        uint256 collateralToLiquidate = (collateralAmountWithBonus * 1e18) / collateralAssetPrice;
+
+        uint256 userCollateral = AToken(collateralReserve.aTokenAddress).balanceOf(user);
+        require(userCollateral > 0, "User has no collateral for this asset");
+
+        if (collateralToLiquidate > userCollateral) {
+            collateralToLiquidate = userCollateral;
+
+            uint256 collateralValueInBase = (collateralToLiquidate * collateralAssetPrice) / 1e18;
+            uint256 debtValueCovered = (collateralValueInBase * 10000) / (10000 + collateralReserve.liquidationBonus);
+            actualDebtToCover = (debtValueCovered * 1e18) / debtAssetPrice;
         }
 
-        emit LiquidationCall(
+        // execute liquidation:
+
+        IERC20(debtAsset).safeTransferFrom(msg.sender, debtReserve.aTokenAddress, actualDebtToCover);
+
+        VariableDebtToken(debtReserve.variableDebtTokenAddress).burn(user, actualDebtToCover);
+
+        if (receiveAToken) {
+            AToken(collateralReserve.aTokenAddress).transferOnLiquidation(user, msg.sender, collateralToLiquidate);
+        } else {
+            AToken(collateralReserve.aTokenAddress).burn(user, collateralToLiquidate);
+            AToken(collateralReserve.aTokenAddress).transferUnderlying(msg.sender, collateralToLiquidate);
+        }
+
+        emit LiquidationCall (
             collateralAsset,
             debtAsset,
             user,
             actualDebtToCover,
-            collAmount,
+            collateralToLiquidate,
             msg.sender,
             receiveAToken
         );
     }
 
-    // helper that performs all computations and validation, returns the final amounts
-    function _calculateLiquidationAmounts(
-        address collateralAsset,
-        address debtAsset,
-        address user,
-        uint256 debtToCover
-    ) internal view returns (uint256 actualDebtToCover, uint256 collAmount) {
-        ReserveData storage reserveCollateral = reserves[collateralAsset];
-        ReserveData storage reserveDebt = reserves[debtAsset];
-
-        require(reserveCollateral.isActive, "Collateral reserve not active");
-        require(reserveDebt.isActive, "Debt reserve not active");
-
-        uint256 priceDebt = priceOracle.getAssetPrice(debtAsset);
-        uint256 priceCollateral = priceOracle.getAssetPrice(collateralAsset);
-
-        uint256 liquidationBonus = reserveCollateral.liquidationBonus; // basis points, e.g. 500 = 5%
-
-        uint256 userCollateralBalance = AToken(reserveCollateral.aTokenAddress).balanceOf(user);
-        require(userCollateralBalance > 0, "User has no collateral");
-
-        // cap by the user's outstanding debt as well
-        uint256 userDebtBalance = VariableDebtToken(reserveDebt.variableDebtTokenAddress).balanceOf(user);
-
-        // maxDebtToCover = userCollateralBalance * priceCollateral * 10000 / ((10000 + bonus) * priceDebt)
-        uint256 numerator = userCollateralBalance * priceCollateral * 10000;
-        uint256 denominator = (10000 + liquidationBonus) * priceDebt;
-        uint256 maxDebtToCover = denominator == 0 ? 0 : numerator / denominator;
-
-        actualDebtToCover = debtToCover;
-        if (actualDebtToCover > maxDebtToCover) {
-            actualDebtToCover = maxDebtToCover;
-        }
-        if (actualDebtToCover > userDebtBalance) {
-            actualDebtToCover = userDebtBalance;
-        }
-        require(actualDebtToCover > 0, "Nothing to liquidate");
-
-        // collateral = actualDebtToCover * priceDebt * (10000 + bonus) / (10000 * priceCollateral)
-        collAmount = (actualDebtToCover * priceDebt * (10000 + liquidationBonus)) / (10000 * priceCollateral);
-
-        if (collAmount > userCollateralBalance) {
-            collAmount = userCollateralBalance;
-        }
-    }
-
+    
     // events
     event ReserveInitialized(
         address indexed asset,
