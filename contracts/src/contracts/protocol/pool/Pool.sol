@@ -339,6 +339,8 @@ contract Pool {
         // check to see if the collateral reserve is active
         // if someone tries to liquidate using a random token address that was never set up
         require(collateralReserve.isActive, "Collateral reserve not active");
+
+        // check the debt asset (the token user borrowed)was properly initialized
         require(debtReserve.isActive, "Debt reserve not active");
         require(debtToCover > 0, "Debt to cover must be greater than 0");
         require(user != msg.sender, "Cannot liquidate yourself");
