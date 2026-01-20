@@ -342,9 +342,14 @@ contract Pool {
 
         // check the debt asset (the token user borrowed)was properly initialized
         require(debtReserve.isActive, "Debt reserve not active");
-        require(debtToCover > 0, "Debt to cover must be greater than 0");
-        require(user != msg.sender, "Cannot liquidate yourself");
 
+        // this line validates that the liquidator is actually trying to repay some debt
+        require(debtToCover > 0, "Debt to cover must be greater than 0");
+
+        // this prevents user from liquidating their own positions
+        require(user != msg.sender, "Cannot liquidate yourself");
+        
+        // getting the user's account data
         (
             uint256 totalCollateralBase,
             uint256 totalDebtBase,
@@ -354,17 +359,26 @@ contract Pool {
             uint256 healthFactor
         ) = getUserAccountData(user);
 
+        // to liquidate the user's health factor must be bellow the threshold
         require(healthFactor < 1e18, "Health factor not below threshold");
 
+        // this line fetch the user's debt balance for the specific debt asset
         uint256 userDebt = VariableDebtToken(debtReserve.variableDebtTokenAddress).balanceOf(user);
+
+        // this line validates that the user being liquidated actually has debt in the specified debt asset
         require(userDebt > 0, "User has no debt for this asset");
 
-        uint256 maxLiquidatableDebt = (userDebt + 5000) / 1000;
+        // this line calculates the maximum amount of debt a liquidator can repay in one transaction.
+        uint256 maxLiquidatableDebt = (userDebt * 5000) / 10000;
         
+        // this line determines the actual amount of debt the liquidator will repay
+        // capping it at the maximum allowed
         uint256 actualDebtToCover = debtToCover > maxLiquidatableDebt ? maxLiquidatableDebt : debtToCover;
 
+        // this line is a second safety cap to ensure the liquidator never repays more than the user's total debt
         actualDebtToCover = actualDebtToCover > userDebt ? userDebt : actualDebtToCover;
 
+        // this line fetches the current price of the debt asset from the price oracle
         uint256 debtAssetPrice = priceOracle.getAssetPrice(debtAsset);
         uint256 collateralAssetPrice = priceOracle.getAssetPrice(collateralAsset);
 
