@@ -378,14 +378,20 @@ contract Pool {
         // this line is a second safety cap to ensure the liquidator never repays more than the user's total debt
         actualDebtToCover = actualDebtToCover > userDebt ? userDebt : actualDebtToCover;
 
-        // this line fetches the current price of the debt asset from the price oracle
+        // this line fetches the current price of the debt asset (USDC) from the price oracle
         uint256 debtAssetPrice = priceOracle.getAssetPrice(debtAsset);
+        // this line fetches the current price of the collateral asset (WETH) from the price oracle 
         uint256 collateralAssetPrice = priceOracle.getAssetPrice(collateralAsset);
 
+        // this line converts the debt token amount into it's USD value (base currency)
+        // incase the user borrowed non-stablecoin like WETH or WBTC
         uint256 debtAmountInBase = (actualDebtToCover * debtAssetPrice) / 1e18;
         
+        // this line calculates the USD value of collateral the liquidator will receive
+        // including the liquidation bonus (reward for liquidating)
         uint256 collateralAmountWithBonus = (debtAmountInBase * (10000 + collateralReserve.liquidationBonus)) / 10000;
 
+        // this line converts the USD value of collateral back into actual collateral tokens
         uint256 collateralToLiquidate = (collateralAmountWithBonus * 1e18) / collateralAssetPrice;
 
         uint256 userCollateral = AToken(collateralReserve.aTokenAddress).balanceOf(user);
