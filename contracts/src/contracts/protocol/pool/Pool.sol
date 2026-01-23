@@ -394,30 +394,45 @@ contract Pool {
         // this line converts the USD value of collateral back into actual collateral tokens
         uint256 collateralToLiquidate = (collateralAmountWithBonus * 1e18) / collateralAssetPrice;
 
+        // this line fetches how much collateral the user has for the specific collateral asset
         uint256 userCollateral = AToken(collateralReserve.aTokenAddress).balanceOf(user);
+
+        // this line validates that the user being liquidated actually has collateral in the specified
+        // collateral asset
         require(userCollateral > 0, "User has no collateral for this asset");
 
+        // this section handles the edge case where the user doesn't have enough collateral
+        // to cover the calculated liquidation amount
         if (collateralToLiquidate > userCollateral) {
             collateralToLiquidate = userCollateral;
-
             uint256 collateralValueInBase = (collateralToLiquidate * collateralAssetPrice) / 1e18;
             uint256 debtValueCovered = (collateralValueInBase * 10000) / (10000 + collateralReserve.liquidationBonus);
             actualDebtToCover = (debtValueCovered * 1e18) / debtAssetPrice;
         }
 
         // execute liquidation:
-
+        // this line transfers the debt repayment from the liquidator to the pool
         IERC20(debtAsset).safeTransferFrom(msg.sender, debtReserve.aTokenAddress, actualDebtToCover);
 
+        // this line reduces the borrower's debt by burning their debt tokens
         VariableDebtToken(debtReserve.variableDebtTokenAddress).burn(user, actualDebtToCover);
 
+        // this section transfers the collateral reward to the liquidator
+        // with two options for how to receive it
         if (receiveAToken) {
+            // option 1: receiveAToken = true
+            // liquidator receives aTokens (e.g., aWETH)
             AToken(collateralReserve.aTokenAddress).transferOnLiquidation(user, msg.sender, collateralToLiquidate);
         } else {
+            // option 2: rceiveAToken = false
+            // liquidator receives underlying tokens (e.g., WETH)
             AToken(collateralReserve.aTokenAddress).burn(user, collateralToLiquidate);
             AToken(collateralReserve.aTokenAddress).transferUnderlying(msg.sender, collateralToLiquidate);
         }
+        // this flexibility allows liquidators to choose based on their strategy 
+        // stay in the protocol earning yield or exit immediately with underlying assets
 
+        // emit the event
         emit LiquidationCall (
             collateralAsset,
             debtAsset,
