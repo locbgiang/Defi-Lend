@@ -323,6 +323,11 @@ contract Pool {
      * 2. liquidator action: repays up to 50% of the borrower's debt
      * 3. reward: liquidator receieves collateral worth 105% of debt repaid (5% bonus)
      * 4. result: borrower's position becomes healthier liquidator profits
+     * 
+     * 
+     * The compiler error is "stack too deep" - the function declares too many local variables
+     * Easiest robust fix: pack many locals into one memory struct so the compiler uses a single stack slot
+     * for that struct istead of many individual stack slots
      */
     function liquidationCall(
         address collateralAsset,
