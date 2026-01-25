@@ -29,6 +29,20 @@ contract Pool {
         bool isActive;
     }
 
+    // helper struct to avoid "stack too deep" in liquidationCall
+    struct LiquidationLocalVars {
+        uint256 maxLiquidatableDebt;
+        uint256 actualDebtToCover;
+        uint256 debtAssetPrice;
+        uint256 collateralAssetPrice;
+        uint256 debtAmountInBase;
+        uint256 collateralAmountWithBonus;
+        uint256 collateralToLiquidate;
+        uint256 userCollateral;
+        uint256 collateralValueInBase;
+        uint256 debtValueCovered;
+    }
+
     mapping(address => ReserveData) public reserves;
     address[] public reservesList;
     address public immutable ADDRESSES_PROVIDER;
@@ -370,80 +384,53 @@ contract Pool {
         // this line fetch the user's debt balance for the specific debt asset
         uint256 userDebt = VariableDebtToken(debtReserve.variableDebtTokenAddress).balanceOf(user);
 
-        // this line validates that the user being liquidated actually has debt in the specified debt asset
         require(userDebt > 0, "User has no debt for this asset");
 
-        // this line calculates the maximum amount of debt a liquidator can repay in one transaction.
-        uint256 maxLiquidatableDebt = (userDebt * 5000) / 10000;
-        
-        // this line determines the actual amount of debt the liquidator will repay
-        // capping it at the maximum allowed
-        uint256 actualDebtToCover = debtToCover > maxLiquidatableDebt ? maxLiquidatableDebt : debtToCover;
+        // pack many locals into a single memory struct to avoid "stack too deep"
+        LiquidationLocalVars memory vars;
 
-        // this line is a second safety cap to ensure the liquidator never repays more than the user's total debt
-        actualDebtToCover = actualDebtToCover > userDebt ? userDebt : actualDebtToCover;
+        // calculate max and actual debt to cover (close factor 50%)
+        vars.maxLiquidatableDebt = (userDebt * 5000) / 10000;
+        vars.actualDebtToCover = debtToCover > vars.maxLiquidatableDebt ? vars.maxLiquidatableDebt : debtToCover;
+        vars.actualDebtToCover = vars.actualDebtToCover > userDebt ? userDebt : vars.actualDebtToCover;
 
-        // this line fetches the current price of the debt asset (USDC) from the price oracle
-        uint256 debtAssetPrice = priceOracle.getAssetPrice(debtAsset);
-        // this line fetches the current price of the collateral asset (WETH) from the price oracle 
-        uint256 collateralAssetPrice = priceOracle.getAssetPrice(collateralAsset);
+        // prices
+        vars.debtAssetPrice = priceOracle.getAssetPrice(debtAsset);
+        vars.collateralAssetPrice = priceOracle.getAssetPrice(collateralAsset);
 
-        // this line converts the debt token amount into it's USD value (base currency)
-        // incase the user borrowed non-stablecoin like WETH or WBTC
-        uint256 debtAmountInBase = (actualDebtToCover * debtAssetPrice) / 1e18;
-        
-        // this line calculates the USD value of collateral the liquidator will receive
-        // including the liquidation bonus (reward for liquidating)
-        uint256 collateralAmountWithBonus = (debtAmountInBase * (10000 + collateralReserve.liquidationBonus)) / 10000;
+        // conversions and bonus
+        vars.debtAmountInBase = (vars.actualDebtToCover * vars.debtAssetPrice) / 1e18;
+        vars.collateralAmountWithBonus = (vars.debtAmountInBase * (10000 + collateralReserve.liquidationBonus)) / 10000;
+        vars.collateralToLiquidate = (vars.collateralAmountWithBonus * 1e18) / vars.collateralAssetPrice;
 
-        // this line converts the USD value of collateral back into actual collateral tokens
-        uint256 collateralToLiquidate = (collateralAmountWithBonus * 1e18) / collateralAssetPrice;
+        // user's collateral and possible cap
+        vars.userCollateral = AToken(collateralReserve.aTokenAddress).balanceOf(user);
+        require(vars.userCollateral > 0, "User has no collateral for this asset");
 
-        // this line fetches how much collateral the user has for the specific collateral asset
-        uint256 userCollateral = AToken(collateralReserve.aTokenAddress).balanceOf(user);
-
-        // this line validates that the user being liquidated actually has collateral in the specified
-        // collateral asset
-        require(userCollateral > 0, "User has no collateral for this asset");
-
-        // this section handles the edge case where the user doesn't have enough collateral
-        // to cover the calculated liquidation amount
-        if (collateralToLiquidate > userCollateral) {
-            collateralToLiquidate = userCollateral;
-            uint256 collateralValueInBase = (collateralToLiquidate * collateralAssetPrice) / 1e18;
-            uint256 debtValueCovered = (collateralValueInBase * 10000) / (10000 + collateralReserve.liquidationBonus);
-            actualDebtToCover = (debtValueCovered * 1e18) / debtAssetPrice;
+        if (vars.collateralToLiquidate > vars.userCollateral) {
+            vars.collateralToLiquidate = vars.userCollateral;
+            vars.collateralValueInBase = (vars.collateralToLiquidate * vars.collateralAssetPrice) / 1e18;
+            vars.debtValueCovered = (vars.collateralValueInBase * 10000) / (10000 + collateralReserve.liquidationBonus);
+            vars.actualDebtToCover = (vars.debtValueCovered * 1e18) / vars.debtAssetPrice;
         }
 
-        // execute liquidation:
-        // this line transfers the debt repayment from the liquidator to the pool
-        IERC20(debtAsset).safeTransferFrom(msg.sender, debtReserve.aTokenAddress, actualDebtToCover);
+        // perform transfers / burns using struct fields
+        IERC20(debtAsset).safeTransferFrom(msg.sender, debtReserve.aTokenAddress, vars.actualDebtToCover);
+        VariableDebtToken(debtReserve.variableDebtTokenAddress).burn(user, vars.actualDebtToCover);
 
-        // this line reduces the borrower's debt by burning their debt tokens
-        VariableDebtToken(debtReserve.variableDebtTokenAddress).burn(user, actualDebtToCover);
-
-        // this section transfers the collateral reward to the liquidator
-        // with two options for how to receive it
         if (receiveAToken) {
-            // option 1: receiveAToken = true
-            // liquidator receives aTokens (e.g., aWETH)
-            AToken(collateralReserve.aTokenAddress).transferOnLiquidation(user, msg.sender, collateralToLiquidate);
+            AToken(collateralReserve.aTokenAddress).transferOnLiquidation(user, msg.sender, vars.collateralToLiquidate);
         } else {
-            // option 2: rceiveAToken = false
-            // liquidator receives underlying tokens (e.g., WETH)
-            AToken(collateralReserve.aTokenAddress).burn(user, collateralToLiquidate);
-            AToken(collateralReserve.aTokenAddress).transferUnderlying(msg.sender, collateralToLiquidate);
+            AToken(collateralReserve.aTokenAddress).burn(user, vars.collateralToLiquidate);
+            AToken(collateralReserve.aTokenAddress).transferUnderlying(msg.sender, vars.collateralToLiquidate);
         }
-        // this flexibility allows liquidators to choose based on their strategy 
-        // stay in the protocol earning yield or exit immediately with underlying assets
 
-        // emit the event
         emit LiquidationCall (
             collateralAsset,
             debtAsset,
             user,
-            actualDebtToCover,
-            collateralToLiquidate,
+            vars.actualDebtToCover,
+            vars.collateralToLiquidate,
             msg.sender,
             receiveAToken
         );
