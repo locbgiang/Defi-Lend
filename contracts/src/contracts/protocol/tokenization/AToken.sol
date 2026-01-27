@@ -92,6 +92,11 @@ contract AToken is ERC20 {
         emit MintToTreasury(RESERVE_TREASURY_ADDRESS, amount);
     }
 
+    /**
+     * @param from the address to transfer from 
+     * @param to the address to transfr to
+     * @param value the amount to transfer
+     */
     function transferOnLiquidation(
         address from,
         address to,

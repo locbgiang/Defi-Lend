@@ -436,7 +436,6 @@ contract Pool {
         );
     }
 
-    
     // events
     event ReserveInitialized(
         address indexed asset,

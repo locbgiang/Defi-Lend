@@ -44,18 +44,31 @@ contract PoolTest is Test {
     event Borrow(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount);
     event Repay(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount);
 
+    event LiquidationCall(
+        address indexed collateralAsset,
+        address indexed debtAsset,
+        address indexed user,
+        uint256 debtToCover,
+        uint256 liquidatedCollateralAmount,
+        address liquidator,
+        bool receiveAToken
+    );
+
+    // store oracle reference for price manipulation
+    PriceOracle public priceOracle;
+
     function setUp() public {
         // deploy mock tokens FIRST (was after pool/oracle before)
         usdc = new MockERC20("USD Coin", "USDC");
         dai  = new MockERC20("Dai Stablecoin", "DAI");
 
         // deploy price oracle and set stablecoin prices
-        PriceOracle oracle = new PriceOracle();
-        oracle.setManualPrice(address(usdc), 1e18);
-        oracle.setManualPrice(address(dai), 1e18);
+        priceOracle = new PriceOracle();
+        priceOracle.setManualPrice(address(usdc), 1e18);
+        priceOracle.setManualPrice(address(dai), 1e18);
 
         // deploy pool with oracle address
-        pool = new Pool(addressesProvider, treasury, address(oracle));
+        pool = new Pool(addressesProvider, treasury, address(priceOracle));
 
         // deploy aTokens
         aUSDC = new AToken(
@@ -636,4 +649,95 @@ contract PoolTest is Test {
         vm.stopPrank();
     }
     
+    // ============================== Liquidation Test ===================================
+
+    function testLiquidationSuccess() public {
+        // setup: user1 supplies USDC as collateral
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        // user2 supplies DAI (liquidity for borrowing)
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        // user1 borrows DAI at near max capacity (75% LTV)
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 700e18, user1); // 70% of collateral
+        vm.stopPrank();
+
+        // verify initial state
+        assertEq(vdDAI.balanceOf(user1), 700e18);
+        assertEq(aUSDC.balanceOf(user1), 1000e18);
+
+        // simulate price drop - USDC drops to $0.80
+        priceOracle.setManualPrice(address(usdc), 0.8e18);
+
+        // check health factor is below 1
+        (,,,,, uint256 healthFactor) = pool.getUserAccountData(user1);
+        assertLt(healthFactor, 1e18, "Health factor should be below 1");
+
+        // Liquidator (user2) liquidates user1
+        vm.startPrank(user2);
+        dai.approve(address(pool), 350e18); // cover up to 50% of debt
+
+        pool.liquidationCall(
+            address(usdc),
+            address(dai),
+            user1,
+            350e18,
+            false
+        );
+        vm.stopPrank();
+
+        // verify debt was reduced
+        uint256 remainingDebt = vdDAI.balanceOf(user1);
+        assertEq(remainingDebt, 350e18, "Debt should be reduced by 350");
+
+        // verify collateral was taken (with 5% bonus)
+        uint256 remainingCollateral = aUSDC.balanceOf(user1);
+        assertLt(remainingCollateral, 1000e18, "collateral should be reduced");
+    }
+
+    function testLiquidationReceiveAToken() public {
+        // setup: user1 supplies and borrows
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 700e18, user1);
+        vm.stopPrank();
+
+        // price drop makes position unhealthy
+        priceOracle.setManualPrice(address(usdc), 0.8e18);
+
+        // record user2's aUSDC balance before
+        uint256 user2ATokenBefore = aUSDC.balanceOf(user2);
+
+        // liquidator receives aTokens instead of underlying
+        vm.startPrank(user2);
+        dai.approve(address(pool), 350e18);
+        pool.liquidationCall(
+            address(usdc),
+            address(dai),
+            user1,
+            350e18,
+            true
+        );
+        vm.stopPrank();
+
+        // verify liquidator received aTokens
+        uint256 user2ATokenAfter = aUSDC.balanceOf(user2);
+        assertGt(user2ATokenAfter, user2ATokenBefore, "Liquidator should receive aTokens");
+    }
 }
