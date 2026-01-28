@@ -740,4 +740,38 @@ contract PoolTest is Test {
         uint256 user2ATokenAfter = aUSDC.balanceOf(user2);
         assertGt(user2ATokenAfter, user2ATokenBefore, "Liquidator should receive aTokens");
     }
+
+    function testCannotLiquidateHealthyPosition() public {
+        // setup: user1 supplies collateral, borrows small amount
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 100e18, user1); // only 10% - very healthy
+        vm.stopPrank();
+
+        // check health factor is above 1
+        (,,,,, uint256 healthFactor) = pool.getUserAccountData(user1);
+        assertGt(healthFactor, 1e18, "Health factor should be above 1");
+
+        // try to liquidate - should fail
+        vm.startPrank(user2);
+        dai.approve(address(pool), 50e18);
+        vm.expectRevert("Health factor not below threshold");
+        pool.liquidationCall(
+            address(usdc),
+            address(dai),
+            user1,
+            50e18,
+            false
+        );
+        vm.stopPrank();
+    }
 }
