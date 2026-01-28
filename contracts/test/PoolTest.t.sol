@@ -774,4 +774,37 @@ contract PoolTest is Test {
         );
         vm.stopPrank();
     }
+
+    function testCannotLiquidateSelf() public {
+        // setup
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 700e18, user1);
+        vm.stopPrank();
+
+        // price drops
+        priceOracle.setManualPrice(address(usdc), 0.8e18);
+
+        // try self-liquidation - should fail
+        vm.startPrank(user1);
+        dai.approve(address(pool), 350e18);
+        vm.expectRevert("Cannot liquidate yourself");
+        pool.liquidationCall(
+            address(usdc),
+            address(dai),
+            user1,
+            350e18,
+            false
+        );
+        vm.stopPrank();
+    }
 }
