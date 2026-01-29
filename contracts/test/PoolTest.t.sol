@@ -807,4 +807,68 @@ contract PoolTest is Test {
         );
         vm.stopPrank();
     }
+
+    function testCannotLiquidateZeroDebt() public {
+        // setup unhealthy position
+
+        // give user1 pool 1000 usdc
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        // give user2's pool 2000 dai
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        // user1 borrows 700 dai? need further clarification
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 700e18, user1); 
+        vm.stopPrank();
+
+        priceOracle.setManualPrice(address(usdc), 0.8e18);
+
+        // try to liquidate with zero debt - should fail
+        vm.startPrank(user2);
+        vm.expectRevert("Debt to cover must be greater than 0");
+        pool.liquidationCall(
+            address(usdc),
+            address(dai),
+            user1,
+            0,
+            false
+        );
+        vm.stopPrank();
+    }
+
+    function testCannotLiquidateWrongDebtAsset() public {
+        // setup user1 borrow DAI, not USDC
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 700e18, user1); // borrowed DAI
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        usdc.approve(address(pool), 350e18);
+        vm.expectRevert("User has no debt for this asset");
+        pool.liquidationCall(
+            address(dai),   // collateral
+            address(usdc),  // wrong debt asset
+            user1,
+            350e18,
+            false
+        );
+        vm.stopPrank();
+    }
 }
