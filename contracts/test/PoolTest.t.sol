@@ -823,47 +823,54 @@ contract PoolTest is Test {
         pool.supply(address(dai), 2000e18, user2);
         vm.stopPrank();
 
-        // user1 borrows 700 dai? need further clarification
+        // user1 borrows 700 dai - user1 now has DEBT
         vm.startPrank(user1);
         pool.borrow(address(dai), 700e18, user1); 
         vm.stopPrank();
 
+        // price drops - position becomes unhealthy
         priceOracle.setManualPrice(address(usdc), 0.8e18);
 
-        // try to liquidate with zero debt - should fail
+        // try to liquidate with debtToCover = 0
         vm.startPrank(user2);
         vm.expectRevert("Debt to cover must be greater than 0");
         pool.liquidationCall(
             address(usdc),
             address(dai),
             user1,
-            0,
+            0,              // this is the problem: debtToCover = 0
             false
         );
         vm.stopPrank();
     }
 
     function testCannotLiquidateWrongDebtAsset() public {
-        // setup user1 borrow DAI, not USDC
+        // setup 
+        // user1 deposits 1000 usdc
         vm.startPrank(user1);
         usdc.approve(address(pool), 1000e18);
         pool.supply(address(usdc), 1000e18, user1);
         vm.stopPrank();
 
+        // user2 deposits 2000 dai
         vm.startPrank(user2);
         dai.approve(address(pool), 2000e18);
         pool.supply(address(dai), 2000e18, user2);
         vm.stopPrank();
 
+        // user1 borrows 700 dai from pool
         vm.startPrank(user1);
         pool.borrow(address(dai), 700e18, user1); // borrowed DAI
         vm.stopPrank();
 
+        priceOracle.setManualPrice(address(usdc), 0.8e18);
+
+        // user2 liquidate user1
         vm.startPrank(user2);
         usdc.approve(address(pool), 350e18);
-        vm.expectRevert("Health factor not below threshold");
+        vm.expectRevert("User has no debt for this asset");
         pool.liquidationCall(
-            address(dai),   // collateral
+            address(usdc),   // collateral
             address(usdc),  // wrong debt asset
             user1,
             350e18,
