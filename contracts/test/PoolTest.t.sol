@@ -861,7 +861,7 @@ contract PoolTest is Test {
 
         vm.startPrank(user2);
         usdc.approve(address(pool), 350e18);
-        vm.expectRevert("User has no debt for this asset");
+        vm.expectRevert("Health factor not below threshold");
         pool.liquidationCall(
             address(dai),   // collateral
             address(usdc),  // wrong debt asset
@@ -870,5 +870,127 @@ contract PoolTest is Test {
             false
         );
         vm.stopPrank();
+    }
+
+    function testCannotLiquidateWrongCollateralAsset() public {
+        // setup user1 has USDC collateral, not DAI
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 700e18, user1);
+        vm.stopPrank();
+
+        priceOracle.setManualPrice(address(usdc), 0.8e18);
+
+        // try to liquidate DAI collateral (user has USDC, not DAI)
+        vm.startPrank(user2);
+        dai.approve(address(pool), 350e18);
+        vm.expectRevert("User has no collateral for this asset");
+        pool.liquidationCall(
+            address(dai),
+            address(dai),
+            user1,
+            350e18,
+            false
+        );
+        vm.stopPrank();
+    }
+
+    function testLiquidationCloseFactor50Percent() public {
+        // setup
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai),700e18, user1);
+        vm.stopPrank();
+
+        priceOracle.setManualPrice(address(usdc), 0.8e18);
+
+        uint256 debtBefore = vdDAI.balanceOf(user1);
+
+        // try to liquidate 100% of debt - should only cover 50%
+        vm.startPrank(user2);
+        dai.approve(address(pool), 700e18); // full debt amount
+        pool.liquidationCall(
+            address(usdc),
+            address(dai),
+            user1,
+            700e18, // request full debt
+            false
+        );
+        vm.stopPrank();
+
+        uint256 debtAfter = vdDAI.balanceOf(user1);
+        uint256 debtCovered = debtBefore - debtAfter;
+
+        // should only cover 50% (350) due to close factor
+        assertEq(debtCovered, 350e18, "Should only liquidate 50% of debt");
+    }
+
+    function testLiquidationBonus() public {
+        // setup
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        pool.borrow(address(dai), 700e18, user1);
+        vm.stopPrank();
+
+        // price drop to exactly $1 for easy calculation
+        priceOracle.setManualPrice(address(usdc), 0.8e18);
+
+        uint256 user1CollateralBefore = aUSDC.balanceOf(user1);
+        uint256 user2USDCBefore = usdc.balanceOf(user2);
+
+        // liquidate 350 DAI (50% of 700)
+        vm.startPrank(user2);
+        dai.approve(address(pool), 350e18);
+        pool.liquidationCall(
+            address(usdc),
+            address(dai),
+            user1,
+            350e18,
+            false   // receive underlying
+        );
+        vm.stopPrank();
+
+        uint256 user1CollateralAfter = aUSDC.balanceOf(user1);
+        uint256 user2USDCAfter = usdc.balanceOf(user2);
+
+        uint256 collateralTaken = user1CollateralBefore - user1CollateralAfter;
+        uint256 usdcReceived = user2USDCAfter - user2USDCBefore;
+
+        // verify liquidator received collateral
+        assertGt(usdcReceived, 0, "Liquidator should receive USDC");
+        assertEq(collateralTaken, usdcReceived, "Collateral taken should equal USDC received");
+
+        // collateral should be > debt due to 5% bonus
+        // debt: 350 DAI = $350
+        // with 5% bonus: $350 * 1.05 = $367.50
+        // at $0.80 per USDC: $367.50 / $0.80 = 459.375 USDC
+        assertGt(collateralTaken, 350e18, "Collateral should include 5% bonus");
     }
 }
