@@ -886,15 +886,18 @@ contract PoolTest is Test {
         pool.supply(address(usdc), 1000e18, user1);
         vm.stopPrank();
 
+        // user2 deposits 2000 DAI into pool
         vm.startPrank(user2);
         dai.approve(address(pool), 2000e18);
         pool.supply(address(dai), 2000e18, user2);
         vm.stopPrank();
 
+        // user1 borrows 700 DAI
         vm.startPrank(user1);
         pool.borrow(address(dai), 700e18, user1);
         vm.stopPrank();
 
+        // usdc price drops to 0.8 dollars
         priceOracle.setManualPrice(address(usdc), 0.8e18);
 
         // try to liquidate DAI collateral (user has USDC, not DAI)
@@ -902,8 +905,8 @@ contract PoolTest is Test {
         dai.approve(address(pool), 350e18);
         vm.expectRevert("User has no collateral for this asset");
         pool.liquidationCall(
-            address(dai),
-            address(dai),
+            address(dai),   // collateral asset (wrong, DAI is not the collateral)
+            address(dai),   // debt asset (user1 owes DAI)
             user1,
             350e18,
             false
@@ -913,22 +916,28 @@ contract PoolTest is Test {
 
     function testLiquidationCloseFactor50Percent() public {
         // setup
+        // user1 deposits 1000 usdc to pool
         vm.startPrank(user1);
         usdc.approve(address(pool), 1000e18);
         pool.supply(address(usdc), 1000e18, user1);
         vm.stopPrank();
 
+        // user2 deposits 2000 DAI into pool
         vm.startPrank(user2);
         dai.approve(address(pool), 2000e18);
         pool.supply(address(dai), 2000e18, user2);
         vm.stopPrank();
 
+        // user1 borrows 700 
         vm.startPrank(user1);
         pool.borrow(address(dai),700e18, user1);
         vm.stopPrank();
 
+        // USDC price drops from 1 to 0.8
         priceOracle.setManualPrice(address(usdc), 0.8e18);
 
+        // saves debtBefore
+        // this is the 700 dai that the user1 owe
         uint256 debtBefore = vdDAI.balanceOf(user1);
 
         // try to liquidate 100% of debt - should only cover 50%
