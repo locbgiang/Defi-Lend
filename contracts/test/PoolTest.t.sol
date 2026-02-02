@@ -933,26 +933,63 @@ contract PoolTest is Test {
         pool.borrow(address(dai),700e18, user1);
         vm.stopPrank();
 
-        // USDC price drops from 1 to 0.8
+        /**
+         * user1 - aUSDC (collateral)   - 1000e18
+         * user1 - vdDAI (debt)         - 700e18
+         * user2 - aDAI (deposit)       - 2000e18         
+         */
+
+        /**
+         * Before price drop:
+         *  - Collateral: 1000 USDC * $1.00 * .80 = $800
+         *  - Debt: 700 DAI * 1.00 = $700
+         *  - Health Factor: $800 / $700 = 1.14 (healthy)
+         */
+
+        /**
+         * After price drop:
+         *  - Collateral: 1000 USDC * $0.8 * 80% = $640
+         *  - Debt: 700 DAI * $1.00 = $700
+         *  - Health Factor: $640 / 700 = 0.91 (Liquidatable!!!)
+         */
+
+        // USDC price drops from 1 to 0.8, 
+        // this will make the position unhealthy
         priceOracle.setManualPrice(address(usdc), 0.8e18);
 
-        // saves debtBefore
+        // record debt before Liquidation
         // this is the 700 dai that the user1 owe
         uint256 debtBefore = vdDAI.balanceOf(user1);
 
         // try to liquidate 100% of debt - should only cover 50%
         vm.startPrank(user2);
-        dai.approve(address(pool), 700e18); // full debt amount
+        dai.approve(address(pool), 700e18); // approve full debt
         pool.liquidationCall(
-            address(usdc),
-            address(dai),
+            address(usdc),          // collateral
+            address(dai),           // debt
             user1,
-            700e18, // request full debt
+            700e18, // request full debt (700 DAI)
             false
         );
         vm.stopPrank();
 
+        /**
+         * In Pool.sol:
+         * vars.maxLiquidatableDebt = (userDebt * 5000) / 10,000;
+         * = (700e18 * 5000) / 10,000
+         * = 350e18 (CAPPED at 50%)
+         * 
+         * vars.actualDebtToCover = debtToCover > vars.maxLiquidatableDebt
+         *      ? vars.maxLiquidatableDebt
+         *      : debtToCover
+         * = 700e18 > 350e18 ? 350e18 : 700e18
+         * = 350e18 (CAPPED at 50%!)
+         */
+        
+        // verify only 50% was liquidated
+        // current debt of user 1: 350e18 DAI
         uint256 debtAfter = vdDAI.balanceOf(user1);
+        // debtCovered = (700e18) - (350e18)
         uint256 debtCovered = debtBefore - debtAfter;
 
         // should only cover 50% (350) due to close factor
@@ -961,46 +998,59 @@ contract PoolTest is Test {
 
     function testLiquidationBonus() public {
         // setup
+        // user1 deposits 1000 USDC to pool as collateral
         vm.startPrank(user1);
         usdc.approve(address(pool), 1000e18);
         pool.supply(address(usdc), 1000e18, user1);
         vm.stopPrank();
 
+        // user2 deposits 2000 DAI
         vm.startPrank(user2);
         dai.approve(address(pool), 2000e18);
         pool.supply(address(dai), 2000e18, user2);
         vm.stopPrank();
 
+        // user1 borrows 700e18 DAI
         vm.startPrank(user1);
         pool.borrow(address(dai), 700e18, user1);
         vm.stopPrank();
 
-        // price drop to exactly $1 for easy calculation
+        // price drop to exactly $0.8 for easy calculation
         priceOracle.setManualPrice(address(usdc), 0.8e18);
 
+        // user1 USDC before = 1000e18
         uint256 user1CollateralBefore = aUSDC.balanceOf(user1);
+        // user2 USDC before = 0e18
         uint256 user2USDCBefore = usdc.balanceOf(user2);
 
-        // liquidate 350 DAI (50% of 700)
+        // liquidate user1 (50% of 700 = 350)
         vm.startPrank(user2);
-        dai.approve(address(pool), 350e18);
+        dai.approve(address(pool), 700e18);
         pool.liquidationCall(
             address(usdc),
             address(dai),
             user1,
-            350e18,
+            700e18,
             false   // receive underlying
         );
         vm.stopPrank();
 
+        // user1 collateral after: should be 1000 - 367.5 = 632.5
         uint256 user1CollateralAfter = aUSDC.balanceOf(user1);
+
+        // user2 USDC after: should be 350 * 1.05 = 367.5
         uint256 user2USDCAfter = usdc.balanceOf(user2);
 
+        // collateralTaken: 1000 - 632.5 = 367.5
         uint256 collateralTaken = user1CollateralBefore - user1CollateralAfter;
+
+        // usdcReceived: 367.5 - 0 = 367.5
         uint256 usdcReceived = user2USDCAfter - user2USDCBefore;
 
         // verify liquidator received collateral
+        // usdcReceived should be greater than 0
         assertGt(usdcReceived, 0, "Liquidator should receive USDC");
+        // collateralTaken from user1 should be equal to usdcReceived from user2
         assertEq(collateralTaken, usdcReceived, "Collateral taken should equal USDC received");
 
         // collateral should be > debt due to 5% bonus
