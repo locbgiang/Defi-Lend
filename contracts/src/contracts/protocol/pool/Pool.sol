@@ -7,6 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {PriceOracle} from "../oracle/PriceOracle.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /*
 Functions:
@@ -17,7 +18,7 @@ Functions:
     5. liquidationCall
 */
 
-contract Pool {
+contract Pool is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     struct ReserveData{
@@ -137,7 +138,7 @@ contract Pool {
      * @param amount how much to deposit (e.g., 1000 USDC)
      * @param onBehalfOf who receives the aTokens (usually msg.sender, but can be different)
      */
-    function supply(address asset, uint256 amount, address onBehalfOf) external {
+    function supply(address asset, uint256 amount, address onBehalfOf) external nonReentrant {
         // Load RESERVE DATA from storage into memory
         // looks up the configuration for this asset in the reserves mapping 
         // example: reserves[USDC] - gets aUSDC address, debt token, LTV, ect.
@@ -177,7 +178,7 @@ contract Pool {
      * @param amount how much to withdraw (e.g. 1000 USDC)
      * @param to where to send withdrawn tokens (can be different from msg.sender)
      */
-    function withdraw(address asset, uint256 amount, address to) external returns (uint256) {
+    function withdraw(address asset, uint256 amount, address to) external nonReentrant returns (uint256) {
         // Load reserves configuration for this asset
         // gets aUSDC address, debt token address, ect.
         ReserveData memory reserve = reserves[asset];
@@ -209,7 +210,7 @@ contract Pool {
      * @param amount how much to borrow (e.g. 500 USDC)
      * @param onBehalfOf who gets the debt token (usually msg.sender but can be different)
      */
-    function borrow(address asset, uint256 amount, address onBehalfOf) external {
+    function borrow(address asset, uint256 amount, address onBehalfOf) external nonReentrant {
         ReserveData memory reserve = reserves[asset];
         require(reserve.isActive, "Reserve not active");
         require(amount > 0, "Amount must be greater than 0");
@@ -293,7 +294,7 @@ contract Pool {
      * @param amount how much to repay (e.g. 500 USDC)
      * @param onBehalfOf whose debt to repay (usually msg.sender, but can pay someone else's debt)
      */
-    function repay(address asset, uint256 amount, address onBehalfOf) external returns(uint256) {
+    function repay(address asset, uint256 amount, address onBehalfOf) external nonReentrant returns(uint256) {
         // load reserve configuration for this asset
         // gets aUSDC address, vdUSDC debt token address, etc.
         // memory = temporary copy (gas opimization)
@@ -349,7 +350,7 @@ contract Pool {
         address user,
         uint256 debtToCover,
         bool receiveAToken
-    ) external {
+    ) external nonReentrant {
         // use to access the collateral asset's configuration
         ReserveData memory collateralReserve = reserves[collateralAsset];
         // use to access the debt asset's configurations
