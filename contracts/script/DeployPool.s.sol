@@ -29,20 +29,29 @@ contract DeployPool is Script {
         console.log("Pool deployed at:", address(pool));
 
         // =================== 3. Deploy USDC Market ==================
-        // For testnet, you'll use mock tokens or testnet USDC
-        // Replace with actual USDC address on mainnet 
         address usdcAddress = vm.envAddress("USDC_ADDRESS");
 
         AToken aUSDC = new AToken(
             address(pool),
             usdcAddress,
             treasury,
-            "Aave UDSC",
+            "Aave USDC",
             "aUSDC"
         );
         console.log("aUSDC deployed at:", address(aUSDC));
 
         VariableDebtToken vdUSDC = new VariableDebtToken(
+            address(pool),
+            usdcAddress,
+            "Variable Debt USDC",
+            "vdUSDC"
+        );
+        console.log("vdUSDC deployed at:", address(vdUSDC));
+
+        // =================== 4. Deploy DAI Market ==================
+        address daiAddress = vm.envAddress("DAI_ADDRESS");
+
+        AToken aDAI = new AToken(
             address(pool),
             daiAddress,
             treasury,
@@ -60,38 +69,36 @@ contract DeployPool is Script {
         console.log("vdDAI deployed at:", address(vdDAI));
 
         //=============== 5. Initialize Reserves ======================
-        // USDC: 75% LTV, 80% liquidation threshold, 5% bonus
         pool.initReserve(
             usdcAddress,
             address(aUSDC),
             address(vdUSDC),
-            7500,               // ltv: 75%
-            8000,               // liquidationThreshold: 80%
-            500                 // liquidationBonus: 5%
+            7500,
+            8000,
+            500
         );
         console.log("USDC reserve initialized");
 
-        // DAI: 75% LTV, 80% liquidation threshold, 5% bonus
         pool.initReserve(
             daiAddress,
             address(aDAI),
             address(vdDAI),
-            7500,               // ltv: 75%
-            8000,               // liquidationThreshold: 80%
-            500                 // liquidationBonus: 5%
+            7500,
+            8000,
+            500
         );
         console.log("DAI reserve initialized");
 
         //============= 6. Set Prices ========================
-        priceOracle.setManualPrice(usdcAddress, 1e18);      // $1.00
-        priceOracle.setManualPrice(daiAddress, 1e18);       // $1.00
+        priceOracle.setManualPrice(usdcAddress, 1e18);
+        priceOracle.setManualPrice(daiAddress, 1e18);
         console.log("Prices set");
 
         vm.stopBroadcast();
 
         //============= Log Summary ===============
         console.log("\n============== DEPLOYMENT SUMMARY ================");
-        console.log("PriceOracle", address(priceOracle));
+        console.log("PriceOracle:", address(priceOracle));
         console.log("Pool:", address(pool));
         console.log("aUSDC:", address(aUSDC));
         console.log("vdUSDC:", address(vdUSDC));
