@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {Test, console} from "forge-std/Test.sol";
-import {VariableDebtToken} from "../src/contracts/protocol/tokenization/VariableDebtToken.sol";
+import {VariableDebtToken} from "../src/VariableDebtToken.sol";
 
 contract VariableDebtTokenTest is Test {
     VariableDebtToken public debtToken;

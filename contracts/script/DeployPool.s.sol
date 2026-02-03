@@ -2,10 +2,10 @@
 pragma solidity ^0.8.10;
 
 import {Script, console} from "forge-std/Script.sol";
-import {Pool} from "../src/contracts/protocol/pool/Pool.sol";
-import {AToken} from "../src/contracts/protocol/tokenization/AToken.sol";
-import {VariableDebtToken} from "../src/contracts/protocol/tokenization/VariableDebtToken.sol";
-import {PriceOracle} from "../src/contracts/protocol/oracle/PriceOracle.sol";
+import {Pool} from "../src/Pool.sol";
+import {AToken} from "../src/AToken.sol";
+import {VariableDebtToken} from "../src/VariableDebtToken.sol";
+import {PriceOracle} from "../src/PriceOracle.sol";
 
 contract DeployPool is Script {
     function run() external {

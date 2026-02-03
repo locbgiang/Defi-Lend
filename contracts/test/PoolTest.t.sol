@@ -2,11 +2,11 @@
 pragma solidity ^0.8.10;
 
 import {Test} from "forge-std/Test.sol";
-import {Pool} from "../src/contracts/protocol/pool/Pool.sol";
-import {AToken} from "../src/contracts/protocol/tokenization/AToken.sol";
-import {VariableDebtToken} from "../src/contracts/protocol/tokenization/VariableDebtToken.sol";
+import {Pool} from "../src/Pool.sol";
+import {AToken} from "../src/AToken.sol";
+import {VariableDebtToken} from "../src/VariableDebtToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {PriceOracle} from "../src/contracts/protocol/oracle/PriceOracle.sol";
+import {PriceOracle} from "../src/PriceOracle.sol";
 
 contract MockERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}

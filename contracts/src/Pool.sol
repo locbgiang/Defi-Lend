@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {AToken} from "../tokenization/AToken.sol";
-import {VariableDebtToken} from "../tokenization/VariableDebtToken.sol";
+import {AToken} from "./AToken.sol";
+import {VariableDebtToken} from "./VariableDebtToken.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {PriceOracle} from "../oracle/PriceOracle.sol";
+import {PriceOracle} from "./PriceOracle.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /*

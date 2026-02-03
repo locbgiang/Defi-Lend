@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {AggregatorV3Interface} from "../../interfaces/AggregatorV3Interface.sol";
+import {AggregatorV3Interface} from "./AggregatorV3Interface.sol";
 
 /**
  * Simple price oracle for MVP
