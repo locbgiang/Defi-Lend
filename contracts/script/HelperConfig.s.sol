@@ -68,4 +68,62 @@ contract HelperConfig is Script {
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
     }
+
+    /**
+     * @notice Creates or returns Anvil (local) configuration
+     * @dev Deploys mock tokens if needed
+     */
+    function getOrCreateAnvilConfig() public returns (NetworkConfig memory) {
+        // If already configured, return existing
+        if (activeNetworkConfig.usdc != address(0)) {
+            return activeNetworkConfig;
+        }
+
+        console.log("Deploying mock tokens for Anvil...");
+
+        vm.startBroadcast(DEFAULT_ANVIL_KEY);
+
+        // Deploy mock USDC
+        ERC20Mock mockUsdc = new ERC20Mock();
+        console.log("Mock USDC deployed at:", address(mockUsdc));
+
+        // Deploy mock DAI
+        ERC20Mock mockDai = new ERC20Mock();
+        console.log("Mock DAI deployed at:", address(mockDai));
+
+        // Deploy mock WETH
+        ERC20Mock mockWeth = new ERC20Mock();
+        console.log("Mock WETH deployed at:", address(mockWeth));
+
+        vm.stopBroadcast();
+
+        return NetworkConfig({
+            usdc: address(mockUsdc),
+            dai: address(mockDai),
+            weth: address(mockWeth),
+            deployerKey: DEFAULT_ANVIL_KEY
+        });
+    }
+
+    // ======================== Getters ==================================
+    
+    function getActiveNetworkConfig() public view returns (NetworkConfig memory) {
+        return activeNetworkConfig;
+    }
+
+    function getUsdcAddress() public view returns (address) {
+        return activeNetworkConfig usdc;
+    }
+
+    function getDaiAddress() public view returns (address) {
+        return activeNetworkConfig dai;
+    }
+
+    function getWethAddress() public view returns (address) {
+        return activeNetworkConfig.weth;
+    }
+
+    function getDeployerKey() public view returns (uint256) {
+        return activeNetworkConfig.deployerKey;
+    }
 }
