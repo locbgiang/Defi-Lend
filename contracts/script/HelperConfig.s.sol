@@ -63,7 +63,7 @@ contract HelperConfig is Script {
     function getMainnetConfig() public view returns (NetworkConfig memory) {
         return NetworkConfig({
             usdc: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, // USDC on Mainnet
-            dai: 0x6B175474E89094C44Da98b954EescdeCB5f8F3b16,  // DAI on Mainnet
+            dai: 0x6B175474E89094C44Da98b954EedeAC495271d0F,  // DAI on Mainnet (fixed)
             weth: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, // WETH on Mainnet
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
@@ -112,11 +112,11 @@ contract HelperConfig is Script {
     }
 
     function getUsdcAddress() public view returns (address) {
-        return activeNetworkConfig usdc;
+        return activeNetworkConfig.usdc;
     }
 
     function getDaiAddress() public view returns (address) {
-        return activeNetworkConfig dai;
+        return activeNetworkConfig.dai;
     }
 
     function getWethAddress() public view returns (address) {

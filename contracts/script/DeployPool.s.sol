@@ -6,31 +6,31 @@ import {Pool} from "../src/Pool.sol";
 import {AToken} from "../src/AToken.sol";
 import {VariableDebtToken} from "../src/VariableDebtToken.sol";
 import {PriceOracle} from "../src/PriceOracle.sol";
+import {HelperConfig} from "./HelperConfig.s.sol";
 
 contract DeployPool is Script {
     function run() external {
-        // Load deployer prive key from environment 
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
+        // Get network config
+        HelperConfig helperConfig = new HelperConfig();
+        HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
 
-        console.log("Deploying with address:", deployer);
+        address deployer = vm.addr(config.deployerKey);
+        address treasury = deployer;
 
-        vm.startBroadcast(deployerPrivateKey);
+        console.log("Deploying on chain ID:", block.chainid);
+        console.log("Deployer address:", deployer);
+
+        vm.startBroadcast(config.deployerKey);
 
         // ==================== 1. Deploy Price Oracle ======================
         PriceOracle priceOracle = new PriceOracle();
         console.log("PriceOracle deployed at:", address(priceOracle));
 
         // =================== 2. Deploy Pool ========================
-        address addressesProvider = deployer;   // Simplified for MVP
-        address treasury = deployer;            // Treasury receives fees
-
         Pool pool = new Pool(addressesProvider, treasury, address(priceOracle));
         console.log("Pool deployed at:", address(pool));
 
         // =================== 3. Deploy USDC Market ==================
-        address usdcAddress = vm.envAddress("USDC_ADDRESS");
-
         AToken aUSDC = new AToken(
             address(pool),
             usdcAddress,
@@ -98,12 +98,17 @@ contract DeployPool is Script {
 
         //============= Log Summary ===============
         console.log("\n============== DEPLOYMENT SUMMARY ================");
+        console.log("Chain ID:", block.chainid);
         console.log("PriceOracle:", address(priceOracle));
         console.log("Pool:", address(pool));
+        console.log("USDC", config.usdc);
+        console.log("DAI", config.dai);
         console.log("aUSDC:", address(aUSDC));
         console.log("vdUSDC:", address(vdUSDC));
         console.log("aDAI:", address(aDAI));
         console.log("vdDAI:", address(vdDAI));
         console.log("==================================================\n");
+
+        return (pool, priceOracle, helperConfig);
     }
 }
