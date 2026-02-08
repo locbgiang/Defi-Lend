@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 // import {MockV3Aggregator} from "../test/mocks/MockV3Aggregator.sol";
-import {Script} from "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 /**

@@ -31,6 +31,8 @@ contract DeployPool is Script {
         console.log("Pool deployed at:", address(pool));
 
         // =================== 3. Deploy USDC Market ==================
+        address usdcAddress = vm.envAddress("USDC_ADDRESS");
+
         AToken aUSDC = new AToken(
             address(pool),
             usdcAddress,
