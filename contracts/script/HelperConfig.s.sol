@@ -18,7 +18,7 @@ contract HelperConfig is Script {
         address wethUsdPriceFeed;
         address wbtcUsdPriceFeed;
         address weth;           // WETH token address
-        addres wbtc;            // WBTC token address
+        address wbtc;            // WBTC token address
         uint256 deployerKey;    // Deployer private key
     }
 
@@ -39,9 +39,9 @@ contract HelperConfig is Script {
 
     // ====================== Constructor ==================================
     constructor() {
-        if (block.chainid = SEPOLIA_CHAIN_ID) {
+        if (block.chainid == SEPOLIA_CHAIN_ID) {
             activeNetworkConfig = getSepoliaConfig();
-        } else if (block.chainid = MAINNET_CHAIN_ID) {
+        } else if (block.chainid == MAINNET_CHAIN_ID) {
             activeNetworkConfig = getMainnetConfig();
         } else {
             activeNetworkConfig = getOrCreateAnvilConfig();
@@ -75,8 +75,9 @@ contract HelperConfig is Script {
             usdc: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, // USDC on Mainnet
             dai: 0x6B175474E89094C44Da98b954EedeAC495271d0F,  // DAI on Mainnet (fixed)
             wethUsdPriceFeed: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419,
-            wbtcUsdPriceFeed: 
+            wbtcUsdPriceFeed: 0xCCAD412903320E940579B703D5776570B12D5887,
             weth: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, // WETH on Mainnet
+            wbtc: 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599,
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
     }
@@ -95,6 +96,14 @@ contract HelperConfig is Script {
 
         vm.startBroadcast(DEFAULT_ANVIL_KEY);
 
+        // deploy mock price feeds
+        MockV3Aggregator ethUsdPriceFeed = new MockV3Aggregator(DECIMALS, ETH_USD_PRICE);
+        console.log("ETH/USD Price Feed deployed at:", address(ethUsdPriceFeed));
+
+        MockV3Aggregator btcUsdPriceFeed = new MockV3Aggregator(DECIMALS, BTC_USD_PRICE);
+        console.log("ETH/USD Price Feed deployed at:", address(btcUsdPriceFeed));
+
+
         // Deploy mock USDC
         ERC20Mock mockUsdc = new ERC20Mock();
         console.log("Mock USDC deployed at:", address(mockUsdc));
@@ -107,12 +116,19 @@ contract HelperConfig is Script {
         ERC20Mock mockWeth = new ERC20Mock();
         console.log("Mock WETH deployed at:", address(mockWeth));
 
+        // Deploy mock BTC
+        ERC20Mock mockBtc = new ERC20Mock();
+        console.log("Mock WBTC deployed at:", address(mockWbtc));
+
         vm.stopBroadcast();
 
         return NetworkConfig({
             usdc: address(mockUsdc),
             dai: address(mockDai),
+            wethUsdPriceFeed: address(ethUsdPriceFeed),
+            wbtcUsdPriceFeed: address(btcUsdPriceFeed),
             weth: address(mockWeth),
+            wbtc: address(mockWbtc),
             deployerKey: DEFAULT_ANVIL_KEY
         });
     }
