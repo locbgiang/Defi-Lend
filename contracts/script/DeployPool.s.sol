@@ -27,15 +27,13 @@ contract DeployPool is Script {
         console.log("PriceOracle deployed at:", address(priceOracle));
 
         // =================== 2. Deploy Pool ========================
-        Pool pool = new Pool(addressesProvider, treasury, address(priceOracle));
+        Pool pool = new Pool(deployer, treasury, address(priceOracle));
         console.log("Pool deployed at:", address(pool));
 
         // =================== 3. Deploy USDC Market ==================
-        address usdcAddress = vm.envAddress("USDC_ADDRESS");
-
         AToken aUSDC = new AToken(
             address(pool),
-            usdcAddress,
+            config.usdc,
             treasury,
             "Aave USDC",
             "aUSDC"
@@ -44,18 +42,16 @@ contract DeployPool is Script {
 
         VariableDebtToken vdUSDC = new VariableDebtToken(
             address(pool),
-            usdcAddress,
+            config.usdc,
             "Variable Debt USDC",
             "vdUSDC"
         );
         console.log("vdUSDC deployed at:", address(vdUSDC));
 
         // =================== 4. Deploy DAI Market ==================
-        address daiAddress = vm.envAddress("DAI_ADDRESS");
-
         AToken aDAI = new AToken(
             address(pool),
-            daiAddress,
+            config.dai,
             treasury,
             "Aave DAI",
             "aDAI"
@@ -64,7 +60,7 @@ contract DeployPool is Script {
 
         VariableDebtToken vdDAI = new VariableDebtToken(
             address(pool),
-            daiAddress,
+            config.dai,
             "Variable Debt DAI",
             "vdDAI"
         );

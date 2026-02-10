@@ -118,7 +118,7 @@ contract HelperConfig is Script {
 
         // Deploy mock BTC
         ERC20Mock mockBtc = new ERC20Mock();
-        console.log("Mock WBTC deployed at:", address(mockWbtc));
+        console.log("Mock WBTC deployed at:", address(mockBtc));
 
         vm.stopBroadcast();
 
@@ -128,7 +128,7 @@ contract HelperConfig is Script {
             wethUsdPriceFeed: address(ethUsdPriceFeed),
             wbtcUsdPriceFeed: address(btcUsdPriceFeed),
             weth: address(mockWeth),
-            wbtc: address(mockWbtc),
+            wbtc: address(mockBtc),
             deployerKey: DEFAULT_ANVIL_KEY
         });
     }
