@@ -18,10 +18,16 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @title AToken
+ * @author Loc Giang
+ * @notice AToken is a receipt token that represents a user's deposit in the lending pool.
+ * When you deposit USDC, you receive aUSDC. It's proof that you have funds in the protocol.
+ */
 contract AToken is ERC20 {
     using SafeERC20 for IERC20;
 
-    // The underlying asset (e.g., USDC, DAI, WETH)
+    // The underlying asset (e.g., USDC, DAI, WETH, WBTC)
     IERC20 public immutable UNDERLYING_ASSET;
     
     // The pool contract that controls minting/burning
@@ -30,6 +36,8 @@ contract AToken is ERC20 {
     // The treasury address for protocol fees
     address public immutable RESERVE_TREASURY_ADDRESS;
 
+    // Access control
+    // only the pool contract can call critical functions. This prevents unauthorized minting/burning
     modifier onlyPool() {
         require(msg.sender == POOL, "Caller must be pool");
         _;
@@ -51,6 +59,12 @@ contract AToken is ERC20 {
         RESERVE_TREASURY_ADDRESS = treasury;
     }
 
+    /**
+     * @param user mint to this address
+     * @param amount amount mint
+     * user deposits underlying asset 
+     * What it does: Creates new aTokens for the user
+     */
     function mint(address user, uint256 amount) external onlyPool returns(bool) {
         require(user != address(0), "Invalid user address");
         require(amount > 0, "Amount must be greater than 0");
@@ -61,6 +75,12 @@ contract AToken is ERC20 {
         return true;
     }
 
+    /**
+     * @param user burn from this address
+     * @param amount amount burn 
+     * user withdraws underlying asset
+     * What it does: Destroys aTokens from user's balance
+     */
     function burn(address user, uint256 amount) external onlyPool {
         require(user != address(0), "Invalid user address");
         require(amount > 0, "Amount must be greater than 0");
@@ -71,7 +91,12 @@ contract AToken is ERC20 {
         emit Burn(user, amount, balanceOf(user), totalSupply());
     }
 
-
+    /**
+     * @param target address of the target
+     * @param amount amount being sent
+     * When called: Withdrawals, borrows, liquidations 
+     * What it does: Sends actual USDC/DAI/WETH to the user
+     */
     function transferUnderlying(address target, uint256 amount) external onlyPool {
         require(target != address(0), "Invalid target address");
         require(amount > 0, "Amount must be greater than 0");
@@ -81,6 +106,11 @@ contract AToken is ERC20 {
         emit TransferUnderlying(target, amount);
     }
 
+    /**
+     * @param amount amount being mint
+     * When called: interest accrual (future feature) 
+     * what it does: mints aTokens to treasury as protocol fees
+     */
     function mintToTreasury(uint256 amount) external onlyPool {
         require(amount > 0, "Amount must be greater than 0");
 
