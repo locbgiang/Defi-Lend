@@ -151,6 +151,18 @@ contract HelperConfig is Script {
         return activeNetworkConfig.weth;
     }
 
+    function getWbtcAddress() public view returns (address) {
+        return activeNetworkConfig.wbtc;
+    }
+
+    function getEthUsdPriceFeed() public view returns (address) {
+        return activeNetworkConfig.wethUsdPriceFeed;
+    }
+
+    function getBtcUsdPriceFeed() public view returns (address) {
+        return activeNetworkConfig.wbtcUsdPriceFeed;
+    }
+
     function getDeployerKey() public view returns (uint256) {
         return activeNetworkConfig.deployerKey;
     }
