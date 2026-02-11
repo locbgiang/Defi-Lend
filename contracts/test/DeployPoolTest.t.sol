@@ -53,4 +53,38 @@ contract DeployPoolTest is Test {
         assertEq(liquidationThreshold, 8000, "Liquidation threshold should be 80%");
         assertEq(liquidationBonus, 500, "Liquidation bonus should be 5%");
     }
+
+    // ============================== Price Tests ====================================
+
+    function testUsdcPriceSet () public view {
+        HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
+        uint256 price = priceOracle.getAssetPrice(config.usdc);
+        assertEq(price, 1e18, "USDC price should be $1");
+    }
+
+    function testDaiPriceSet () public view {
+        HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
+        uint256 price = priceOracle.getAssetPrice(config.dai);
+        assertEq(price, 1e18, "DAI price should be $1");
+    }
+
+    // ============================= AToken Tests ====================================
+
+    function testATokenPoolAddress () public view {
+        HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
+
+        (address aTokenAddress, , , , , ) = pool.reserves(config.usdc);
+        AToken aToken = AToken(aTokenAddress);
+
+        assertEq(aToken.POOL(), address(pool), "AToken should point to Pool"); 
+    }
+
+    function testDebtTokenUnderlyingAsset () public view {
+        HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
+
+        (, address vdTokenAddress, , , , ) = pool.reserves(config.usdc);
+        VariableDebtToken vdToken = VariableDebtToken(vdTokenAddress);
+
+        assertEq(address(vdToken.UNDERLYING_ASSET()), config.usdc, "DebtToken underlying should be USDC");
+    }
 }
