@@ -7,6 +7,9 @@ import {Pool} from "../src/Pool.sol";
 import {PriceOracle} from "../src/PriceOracle.sol";
 import {HelperConfig} from "../script/HelperConfig.s.sol";
 
+import {AToken} from "../src/AToken.sol";
+import {VariableDebtToken} from "../src/VariableDebtToken.sol";
+
 contract DeployPoolTest is Test {
     DeployPool deployer;
     Pool pool;
@@ -86,5 +89,64 @@ contract DeployPoolTest is Test {
         VariableDebtToken vdToken = VariableDebtToken(vdTokenAddress);
 
         assertEq(address(vdToken.UNDERLYING_ASSET()), config.usdc, "DebtToken underlying should be USDC");
+    }
+
+    // =============================== DebtToken Tests =================================
+
+    function testDebtTokenPoolAddress () public view {
+        HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
+
+        (, address vdTokenAddress, , , ,) = pool.reserves(config.usdc);
+        VariableDebtToken vdToken = VariableDebtToken(vdTokenAddress);
+
+        assertEq(vdToken.POOL(), address(pool), "DebtToken should point to Pool");
+    }
+
+    function testDebtTokenUnderlyingAsset () public view {
+        HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
+
+        (, address vdTokenAddress, , , , ) = pool.reserves(config.usdc);
+        VariableDebtToken vdToken = VariableDebtToken(vdTokenAddress);
+
+        assertEq(address(vdToken.UNDERLYING_ASSET()), config.usdc, "DebtToken underlying should be USDC");
+    }
+
+    // ============================= Integration Test ==================================
+
+    function testFullDeploymentIntegration() public {
+        HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
+
+        // Get USDC reserve
+        (
+            address aUsdcAddress,
+            address vdUsdcAddress,
+            ,,,
+            bool usdcActive
+        ) = pool.reserves(config.usdc);
+
+        // Get DAI reserve
+        (
+            address aDaiAddress,
+            address vdDaiAddress,
+            ,,,
+            bool daiActive
+        ) = pool.reserves(config.dai);
+
+        // verify all contracts are deployed and connected
+        assertTrue(usdcActive && daiActive, "Both reserves should be active");
+
+        // verify ATokens point to correct pool
+        assertEq(AToken(aUsdcAddress).POOL(), address(pool));
+        assertEq(AToken(aDaiAddress).POOL(), address(pool));
+
+        // verify DebtTokens point to correct pool
+        assertEq(VariableDebtToken(vdUsdcAddress).POOL(), address(pool));
+        assertEq(VariableDebtToken(vdDaiAddress).POOL(), address(pool));
+
+        // verify prices are set
+        assertEq(priceOracle.getAssetPrice(config.usdc), 1e18);
+        assertEq(priceOracle.getAssetPrice(config.dai), 1e18);
+
+        console.log("Full deployment integration test passed");
     }
 }

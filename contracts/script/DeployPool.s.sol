@@ -68,7 +68,7 @@ contract DeployPool is Script {
 
         //=============== 5. Initialize Reserves ======================
         pool.initReserve(
-            usdcAddress,
+            config.usdc,
             address(aUSDC),
             address(vdUSDC),
             7500,
@@ -78,7 +78,7 @@ contract DeployPool is Script {
         console.log("USDC reserve initialized");
 
         pool.initReserve(
-            daiAddress,
+            config.dai,
             address(aDAI),
             address(vdDAI),
             7500,
@@ -88,8 +88,8 @@ contract DeployPool is Script {
         console.log("DAI reserve initialized");
 
         //============= 6. Set Prices ========================
-        priceOracle.setManualPrice(usdcAddress, 1e18);
-        priceOracle.setManualPrice(daiAddress, 1e18);
+        priceOracle.setManualPrice(config.usdc, 1e18);
+        priceOracle.setManualPrice(config.dai, 1e18);
         console.log("Prices set");
 
         vm.stopBroadcast();
