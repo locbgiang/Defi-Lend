@@ -75,9 +75,9 @@ contract HelperConfig is Script {
             usdc: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, // USDC on Mainnet
             dai: 0x6B175474E89094C44Da98b954EedeAC495271d0F,  // DAI on Mainnet (fixed)
             wethUsdPriceFeed: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419,
-            wbtcUsdPriceFeed: 0xCCAD412903320E940579B703D5776570B12D5887,
+            wbtcUsdPriceFeed: 0xCcad412903320e940579b703d5776570b12D5887,
             weth: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, // WETH on Mainnet
-            wbtc: 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599,
+            wbtc: 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599,
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
     }

@@ -9,7 +9,7 @@ import {PriceOracle} from "../src/PriceOracle.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
 
 contract DeployPool is Script {
-    function run() external {
+    function run() external returns (Pool, PriceOracle, HelperConfig) {
         // Get network config
         HelperConfig helperConfig = new HelperConfig();
         HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();

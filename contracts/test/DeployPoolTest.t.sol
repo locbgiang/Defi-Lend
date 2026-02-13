@@ -82,13 +82,13 @@ contract DeployPoolTest is Test {
         assertEq(aToken.POOL(), address(pool), "AToken should point to Pool"); 
     }
 
-    function testDebtTokenUnderlyingAsset () public view {
+    function testATokenUnderlyingAsset () public view {
         HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
 
-        (, address vdTokenAddress, , , , ) = pool.reserves(config.usdc);
-        VariableDebtToken vdToken = VariableDebtToken(vdTokenAddress);
+        (, address aTokenAddress, , , , ) = pool.reserves(config.usdc);
+        VariableDebtToken aToken = VariableDebtToken(aTokenAddress);
 
-        assertEq(address(vdToken.UNDERLYING_ASSET()), config.usdc, "DebtToken underlying should be USDC");
+        assertEq(address(aToken.UNDERLYING_ASSET()), config.usdc, "AToken underlying should be USDC");
     }
 
     // =============================== DebtToken Tests =================================
