@@ -1,9 +1,4 @@
 import { useState } from 'react'
-
-import { WagmiProvider } from 'wagmi';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { config } from './config/wagmi';
 import Header from './components/Header';
 
 function App() {
@@ -12,6 +7,7 @@ function App() {
   return (
     <>
       <div>
+        <Header />
         hello world
       </div>
     </>
