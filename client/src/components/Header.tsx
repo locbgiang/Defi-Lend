@@ -1,4 +1,3 @@
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 function Header() {
   return (
@@ -26,7 +25,7 @@ function Header() {
       </nav>
 
       {/* Wallet Connect Button */}
-      <ConnectButton />
+      
     </header>
   );
 }
