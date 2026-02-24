@@ -1,25 +1,25 @@
 
 function Header() {
   return (
-    <header className="flex items-center justify-between px-6 py-4 bg-gray-800 border-b border-gray-700">
+    <header>
       {/* Logo */}
-      <div className="flex items-center gap-2">
-        <span className="text-2xl font-bold text-blue-500">🏦</span>
-        <span className="text-xl font-semibold">Defi-Lend</span>
+      <div>
+        <span>🏦</span>
+        <span>Defi-Lend</span>
       </div>
 
       {/* Navigation */}
-      <nav className="hidden md:flex items-center gap-6">
-        <a href="#" className="hover:text-blue-400 transition-colors">
+      <nav>
+        <a>
           Dashboard
         </a>
-        <a href="#" className="hover:text-blue-400 transition-colors">
+        <a>
           Markets
         </a>
-        <a href="#" className="hover:text-blue-400 transition-colors">
+        <a>
           Supply
         </a>
-        <a href="#" className="hover:text-blue-400 transition-colors">
+        <a>
           Borrow
         </a>
       </nav>
