@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 
 function Header() {
   return (
@@ -10,18 +11,18 @@ function Header() {
 
       {/* Navigation */}
       <nav>
-        <a>
+        <Link to="/dashboard">
           Dashboard
-        </a>
-        <a>
+        </Link>
+        <Link to="/markets">
           Markets
-        </a>
-        <a>
+        </Link>
+        <Link to="/supply">
           Supply
-        </a>
-        <a>
+        </Link>
+        <Link to="/borrow">
           Borrow
-        </a>
+        </Link>
       </nav>
 
       {/* Wallet Connect Button */}
