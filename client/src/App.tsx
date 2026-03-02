@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 import Markets from './components/Markets';
 import Supply from './components/Supply';
 import Borrow from './components/Borrow';
+import './styles/App.css';
 
 // Create a react-query client
 const queryClient = new QueryClient();
@@ -16,9 +17,9 @@ function App() {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+          <div className="app">
             <Header />
-            <main style={{ padding: '24px 32px' }}>
+            <main className="main-content">
               <Routes>
                 <Route path='/' element={<Dashboard />} />
                 <Route path='/dashboard' element={<Dashboard />} />

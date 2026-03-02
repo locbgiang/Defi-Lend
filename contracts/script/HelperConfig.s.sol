@@ -54,7 +54,7 @@ contract HelperConfig is Script {
      * @notice Returns Sepolia testnet configuration
      * @dev uses existing testnet token addresses or deploy mocks
      */
-    function getSepoliaConfig() public view returns (NetworkConfig memory) {
+    function getSepoliaConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
             usdc: 0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8, // Aave USDC on Sepolia
             dai: 0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357,  // Aave DAI on Sepolia
@@ -62,7 +62,7 @@ contract HelperConfig is Script {
             wbtcUsdPriceFeed: 0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43,   // BTC/ USD price on chainlink
             weth: 0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c, // WETH on Sepolia
             wbtc: 0x4131600fd78Eb697413cA806A8f748edB959ddcd,
-            deployerKey: vm.envUint("PRIVATE_KEY")
+            deployerKey: 0 // Not used - pass --account flag instead
         });
     }
 
@@ -70,7 +70,7 @@ contract HelperConfig is Script {
      * @notice Returns Mainnet configuration
      * @dev Uses real mainnet token addresses
      */
-    function getMainnetConfig() public view returns (NetworkConfig memory) {
+    function getMainnetConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
             usdc: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, // USDC on Mainnet
             dai: 0x6B175474E89094C44Da98b954EedeAC495271d0F,  // DAI on Mainnet (fixed)
@@ -78,7 +78,7 @@ contract HelperConfig is Script {
             wbtcUsdPriceFeed: 0xCcad412903320e940579b703d5776570b12D5887,
             weth: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, // WETH on Mainnet
             wbtc: 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599,
-            deployerKey: vm.envUint("PRIVATE_KEY")
+            deployerKey: 0 // Not used - pass --account flag instead
         });
     }
 

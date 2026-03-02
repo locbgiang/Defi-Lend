@@ -14,13 +14,15 @@ contract DeployPool is Script {
         HelperConfig helperConfig = new HelperConfig();
         HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
 
-        address deployer = vm.addr(config.deployerKey);
-        address treasury = deployer;
-
         console.log("Deploying on chain ID:", block.chainid);
-        console.log("Deployer address:", deployer);
 
-        vm.startBroadcast(config.deployerKey);
+        // Use vm.startBroadcast() without key - works with --account flag
+        // For local Anvil, pass --private-key with default anvil key
+        vm.startBroadcast();
+
+        address deployer = msg.sender;
+        address treasury = deployer;
+        console.log("Deployer address:", deployer);
 
         // ==================== 1. Deploy Price Oracle ======================
         PriceOracle priceOracle = new PriceOracle();

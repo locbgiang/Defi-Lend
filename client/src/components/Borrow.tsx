@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi';
 import { useLocation } from 'react-router-dom';
 import { MOCK_MARKETS } from '../config/tokens';
 import { formatPercent } from '../utils/formatters';
+import '../styles/Borrow.css';
 
 function Borrow() {
   const { isConnected } = useAccount();
@@ -11,15 +12,13 @@ function Borrow() {
 
   const [amounts, setAmounts] = useState<Record<string, string>>({});
 
-  // Mock user data (replace with real data from useUserAccountData hook)
   const mockUserData = {
-    totalCollateral: 5000, // USD
+    totalCollateral: 5000,
     totalBorrowed: 0,
-    availableToBorrow: 3750, // 75% of collateral
+    availableToBorrow: 3750,
     healthFactor: '∞',
   };
 
-  // Mock available liquidity per asset
   const mockLiquidity: Record<string, string> = {
     'USDC': '700,000.00',
     'DAI': '400,000.00',
@@ -34,19 +33,10 @@ function Borrow() {
 
   if (!isConnected) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '80px 20px',
-        textAlign: 'center',
-      }}>
-        <span style={{ fontSize: '64px', marginBottom: '24px' }}>🔗</span>
-        <h1 style={{ fontSize: '28px', color: '#1a1a2e', marginBottom: '12px' }}>
-          Connect Your Wallet
-        </h1>
-        <p style={{ color: '#666', fontSize: '16px', maxWidth: '400px' }}>
+      <div className="borrow-connect-prompt">
+        <span className="borrow-connect-icon">🔗</span>
+        <h1 className="borrow-connect-title">Connect Your Wallet</h1>
+        <p className="borrow-connect-text">
           Connect your wallet to borrow assets against your collateral.
         </p>
       </div>
@@ -55,168 +45,106 @@ function Borrow() {
 
   return (
     <div>
-      <h1 style={{ fontSize: '28px', color: '#1a1a2e', marginBottom: '8px' }}>
-        Borrow Assets
-      </h1>
-      <p style={{ color: '#666', marginBottom: '24px' }}>
+      <h1 className="borrow-title">Borrow Assets</h1>
+      <p className="borrow-subtitle">
         Borrow assets against your supplied collateral. Monitor your health factor to avoid liquidation.
       </p>
 
       {/* Borrowing Power Card */}
-      <div style={{
-        backgroundColor: '#fff',
-        borderRadius: '12px',
-        padding: '24px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        marginBottom: '24px',
-      }}>
-        <h2 style={{ fontSize: '18px', color: '#1a1a2e', marginBottom: '20px' }}>
-          Your Borrowing Power
-        </h2>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '20px',
-        }}>
+      <div className="borrow-power-card">
+        <h2 className="borrow-power-title">Your Borrowing Power</h2>
+        <div className="borrow-power-stats">
           <div>
-            <p style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Total Collateral</p>
-            <p style={{ fontSize: '24px', fontWeight: '700', color: '#1a1a2e' }}>
-              ${mockUserData.totalCollateral.toLocaleString()}
-            </p>
+            <p className="borrow-stat-label">Total Collateral</p>
+            <p className="borrow-stat-value">${mockUserData.totalCollateral.toLocaleString()}</p>
           </div>
           <div>
-            <p style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Total Borrowed</p>
-            <p style={{ fontSize: '24px', fontWeight: '700', color: '#d32f2f' }}>
+            <p className="borrow-stat-label">Total Borrowed</p>
+            <p className="borrow-stat-value borrow-stat-value--red">
               ${mockUserData.totalBorrowed.toLocaleString()}
             </p>
           </div>
           <div>
-            <p style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Available to Borrow</p>
-            <p style={{ fontSize: '24px', fontWeight: '700', color: '#2e7d32' }}>
+            <p className="borrow-stat-label">Available to Borrow</p>
+            <p className="borrow-stat-value borrow-stat-value--green">
               ${mockUserData.availableToBorrow.toLocaleString()}
             </p>
           </div>
           <div>
-            <p style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Health Factor</p>
-            <p style={{ fontSize: '24px', fontWeight: '700', color: '#2e7d32' }}>
-              {mockUserData.healthFactor}
-            </p>
+            <p className="borrow-stat-label">Health Factor</p>
+            <p className="borrow-stat-value borrow-stat-value--green">{mockUserData.healthFactor}</p>
           </div>
         </div>
 
         {/* Borrowing Power Bar */}
-        <div style={{ marginTop: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ fontSize: '14px', color: '#666' }}>Borrowing Power Used</span>
-            <span style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a2e' }}>
-              {mockUserData.totalCollateral > 0 
+        <div className="borrow-power-bar">
+          <div className="borrow-power-bar-header">
+            <span className="borrow-power-bar-label">Borrowing Power Used</span>
+            <span className="borrow-power-bar-value">
+              {mockUserData.totalCollateral > 0
                 ? `${((mockUserData.totalBorrowed / mockUserData.availableToBorrow) * 100).toFixed(1)}%`
-                : '0%'
-              }
+                : '0%'}
             </span>
           </div>
-          <div style={{
-            height: '8px',
-            backgroundColor: '#e0e0e0',
-            borderRadius: '4px',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              width: `${(mockUserData.totalBorrowed / mockUserData.availableToBorrow) * 100}%`,
-              height: '100%',
-              backgroundColor: '#2e7d32',
-              borderRadius: '4px',
-              transition: 'width 0.3s ease',
-            }} />
+          <div className="borrow-progress-track">
+            <div
+              className="borrow-progress-fill"
+              style={{ width: `${(mockUserData.totalBorrowed / mockUserData.availableToBorrow) * 100}%` }}
+            />
           </div>
         </div>
       </div>
 
       {/* Borrow Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-        gap: '20px',
-      }}>
+      <div className="borrow-cards">
         {MOCK_MARKETS.map((market) => (
           <div
             key={market.symbol}
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: '12px',
-              padding: '24px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              border: selectedAsset === market.symbol ? '2px solid #1976d2' : '2px solid transparent',
-            }}
+            className={`borrow-card ${selectedAsset === market.symbol ? 'borrow-card--selected' : ''}`}
           >
             {/* Asset Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '32px' }}>{market.icon}</span>
+            <div className="borrow-card-header">
+              <div className="borrow-asset">
+                <span className="borrow-asset-icon">{market.icon}</span>
                 <div>
-                  <p style={{ fontWeight: '600', fontSize: '18px', color: '#1a1a2e' }}>{market.symbol}</p>
-                  <p style={{ fontSize: '12px', color: '#888' }}>{market.name}</p>
+                  <p className="borrow-asset-symbol">{market.symbol}</p>
+                  <p className="borrow-asset-name">{market.name}</p>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '12px', color: '#666' }}>Borrow APY</p>
-                <p style={{ fontSize: '20px', fontWeight: '700', color: '#d32f2f' }}>
-                  {formatPercent(market.borrowAPY)}
-                </p>
+                <p className="borrow-apy-label">Borrow APY</p>
+                <p className="borrow-apy-value">{formatPercent(market.borrowAPY)}</p>
               </div>
             </div>
 
             {/* Available Liquidity */}
-            <div style={{
-              backgroundColor: '#f8f9fa',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              marginBottom: '16px',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '14px', color: '#666' }}>Available Liquidity</span>
-                <span style={{ fontWeight: '600', color: '#1a1a2e' }}>
+            <div className="borrow-liquidity-box">
+              <div className="borrow-liquidity-row">
+                <span className="borrow-liquidity-label">Available Liquidity</span>
+                <span className="borrow-liquidity-value">
                   {mockLiquidity[market.symbol]} {market.symbol}
                 </span>
               </div>
             </div>
 
             {/* Amount Input */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '14px', color: '#666', marginBottom: '8px', display: 'block' }}>
-                Amount to Borrow
-              </label>
+            <div className="borrow-input-group">
+              <label className="borrow-input-label">Amount to Borrow</label>
               <input
                 type="text"
                 value={amounts[market.symbol] || ''}
                 onChange={(e) => handleAmountChange(market.symbol, e.target.value)}
                 placeholder="0.00"
-                style={{
-                  width: '100%',
-                  padding: '14px 16px',
-                  fontSize: '18px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
+                className="borrow-input"
               />
             </div>
 
             {/* New Health Factor Preview */}
             {amounts[market.symbol] && parseFloat(amounts[market.symbol]) > 0 && (
-              <div style={{
-                backgroundColor: '#fff3e0',
-                borderRadius: '8px',
-                padding: '12px 16px',
-                marginBottom: '16px',
-                border: '1px solid #ffcc80',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#ef6c00' }}>New Health Factor</span>
-                  <span style={{ fontWeight: '600', color: '#ef6c00' }}>
-                    ~2.45
-                  </span>
+              <div className="borrow-health-preview">
+                <div className="borrow-health-preview-row">
+                  <span className="borrow-health-preview-label">New Health Factor</span>
+                  <span className="borrow-health-preview-value">~2.45</span>
                 </div>
               </div>
             )}
@@ -224,47 +152,18 @@ function Borrow() {
             {/* Borrow Button */}
             <button
               disabled={!amounts[market.symbol] || parseFloat(amounts[market.symbol]) <= 0 || mockUserData.availableToBorrow <= 0}
-              style={{
-                width: '100%',
-                padding: '14px',
-                backgroundColor: amounts[market.symbol] && parseFloat(amounts[market.symbol]) > 0 && mockUserData.availableToBorrow > 0
-                  ? '#d32f2f'
-                  : '#e0e0e0',
-                color: amounts[market.symbol] && parseFloat(amounts[market.symbol]) > 0 && mockUserData.availableToBorrow > 0
-                  ? 'white'
-                  : '#999',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: amounts[market.symbol] && parseFloat(amounts[market.symbol]) > 0 && mockUserData.availableToBorrow > 0
-                  ? 'pointer'
-                  : 'not-allowed',
-                fontSize: '16px',
-                fontWeight: '600',
-              }}
+              className="borrow-btn"
             >
-              {mockUserData.availableToBorrow <= 0 
-                ? 'No Collateral' 
-                : `Borrow ${market.symbol}`
-              }
+              {mockUserData.availableToBorrow <= 0 ? 'No Collateral' : `Borrow ${market.symbol}`}
             </button>
           </div>
         ))}
       </div>
 
       {/* Your Borrows Section */}
-      <div style={{
-        backgroundColor: '#fff',
-        borderRadius: '12px',
-        padding: '24px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        marginTop: '32px',
-      }}>
-        <h2 style={{ fontSize: '20px', color: '#1a1a2e', marginBottom: '16px' }}>
-          Your Borrows
-        </h2>
-        <p style={{ color: '#888', textAlign: 'center', padding: '32px' }}>
-          You haven't borrowed any assets yet
-        </p>
+      <div className="borrow-section">
+        <h2 className="borrow-section-title">Your Borrows</h2>
+        <p className="borrow-empty-state">You haven't borrowed any assets yet</p>
       </div>
     </div>
   );
