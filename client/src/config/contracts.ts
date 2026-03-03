@@ -8,6 +8,8 @@ aUSDC	        0x7547036AB54E8F3374D256Ccd71ad9C2E9F615C4
 vdUSDC	      0xAcBB9E3Bdd1320E2BD69a20ACCA672EB65d41Be2
 aDAI	        0x7916AefE5aA4B71299eaBb6241072dDb354c31D7
 vdDAI	        0x8A090b7674309050A5D748aA291ba0c9EeD4911a
+aWETH         0x64cDDef432871E9E376103F12c89e925936bC03d
+vdWETH        0xAeBd2bA52C776B99b6631DcE70640e020a9C5e94
  */
 export const CONTRACTS = {
   // Pool contract - main entry point (Sepolia)
@@ -27,7 +29,7 @@ export const CONTRACTS = {
   ATOKENS: {
     aUSDC: '0x7547036AB54E8F3374D256Ccd71ad9C2E9F615C4' as `0x${string}`,
     aDAI: '0x7916AefE5aA4B71299eaBb6241072dDb354c31D7' as `0x${string}`,
-    aWETH: '0x0000000000000000000000000000000000000000' as `0x${string}`, // Not deployed
+    aWETH: '0x64cDDef432871E9E376103F12c89e925936bC03d' as `0x${string}`,
   },
 } as const;
 
@@ -163,4 +165,5 @@ export const ERC20_ABI = [
 export const DEBT_TOKENS = {
   vdUSDC: '0xAcBB9E3Bdd1320E2BD69a20ACCA672EB65d41Be2' as `0x${string}`,
   vdDAI: '0x8A090b7674309050A5D748aA291ba0c9EeD4911a' as `0x${string}`,
+  vdWETH: '0xAeBd2bA52C776B99b6631DcE70640e020a9C5e94' as `0x${string}`,
 } as const;

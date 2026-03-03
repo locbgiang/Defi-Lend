@@ -39,6 +39,15 @@ const MARKET_CONFIG = [
     debtTokenAddress: DEBT_TOKENS.vdDAI,
     decimals: 18,
   },
+  {
+    symbol: 'WETH',
+    name: 'Wrapped Ether',
+    icon: '💎',
+    address: CONTRACTS.TOKENS.WETH,
+    aTokenAddress: CONTRACTS.ATOKENS.aWETH,
+    debtTokenAddress: DEBT_TOKENS.vdWETH,
+    decimals: 18,
+  },
 ] as const;
 
 function formatLargeNumber(value: bigint, decimals: number): string {
