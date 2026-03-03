@@ -35,6 +35,42 @@
   margin-bottom: 24px;
 }
 
+/* ETH Note styling */
+.supply-eth-note {
+  background-color: #f0f4ff;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.supply-eth-note-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.supply-eth-note-text {
+  font-size: 12px;
+  color: #666;
+}
+
+.supply-btn--eth {
+  background-color: #627eea !important;
+}
+
+.supply-btn--eth:hover {
+  background-color: #3c4a9e !important;
+}
+
+.supply-success {
+  color: #2e7d32;
+  text-align: center;
+  margin-top: 12px;
+  font-weight: 500;
+}
+
 .supply-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -223,4 +259,33 @@
   color: #888;
   text-align: center;
   padding: 32px 0;
+}
+
+.supply-loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.supply-positions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.supply-position-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.supply-position-asset {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  color: #1a1a2e;
 }

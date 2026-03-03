@@ -282,3 +282,32 @@
   text-align: center;
   padding: 32px 0;
 }
+
+.borrow-loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.borrow-positions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.borrow-position-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.borrow-position-asset {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  color: #1a1a2e;
+}

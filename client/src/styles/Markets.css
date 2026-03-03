@@ -18,13 +18,14 @@
 
 .markets-table-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 150px;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 0.8fr 180px;
   padding: 16px 24px;
   background-color: #f8f9fa;
   border-bottom: 1px solid #e0e0e0;
   font-weight: 600;
   font-size: 14px;
   color: #666;
+  gap: 16px;
 }
 
 .markets-table-header span:not(:first-child) {
@@ -43,11 +44,12 @@
 
 .markets-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 150px;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 0.8fr 180px;
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;
   align-items: center;
   transition: background-color 0.2s;
+  gap: 16px;
 }
 
 .markets-row:hover {

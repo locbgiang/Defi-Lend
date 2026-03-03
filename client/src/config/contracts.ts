@@ -10,6 +10,7 @@ aDAI	        0x7916AefE5aA4B71299eaBb6241072dDb354c31D7
 vdDAI	        0x8A090b7674309050A5D748aA291ba0c9EeD4911a
 aWETH         0x64cDDef432871E9E376103F12c89e925936bC03d
 vdWETH        0xAeBd2bA52C776B99b6631DcE70640e020a9C5e94
+WETHGateway   0x6724FA47Ca81F10feeACD202e5f8Bc13D3594094
  */
 export const CONTRACTS = {
   // Pool contract - main entry point (Sepolia)
@@ -17,6 +18,9 @@ export const CONTRACTS = {
   
   // Price Oracle (Sepolia)
   PRICE_ORACLE: '0xdF7514C51674B6aA5728bc3D0c8c6c2F7d96AaC7' as `0x${string}`,
+  
+  // WETH Gateway for native ETH deposits (Sepolia)
+  WETH_GATEWAY: '0x6724FA47Ca81F10feeACD202e5f8Bc13D3594094' as `0x${string}`,
   
   // Token addresses (Sepolia - Aave testnet tokens)
   TOKENS: {
@@ -167,3 +171,21 @@ export const DEBT_TOKENS = {
   vdDAI: '0x8A090b7674309050A5D748aA291ba0c9EeD4911a' as `0x${string}`,
   vdWETH: '0xAeBd2bA52C776B99b6631DcE70640e020a9C5e94' as `0x${string}`,
 } as const;
+
+// WETHGateway ABI for native ETH deposits
+export const WETH_GATEWAY_ABI = [
+  {
+    name: 'depositETH',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [],
+    outputs: [],
+  },
+  {
+    name: 'withdrawETH',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [],
+  },
+] as const;

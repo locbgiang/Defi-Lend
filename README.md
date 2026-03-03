@@ -67,6 +67,7 @@ The protocol uses an overcollateralized lending model with dynamic interest rate
 |----------|---------|
 | Pool | `0xDA0F9F9c05D2A9B46561f628a64Eb29b656d29B3` |
 | PriceOracle | `0xdF7514C51674B6aA5728bc3D0c8c6c2F7d96AaC7` |
+| WETHGateway | `0x6724FA47Ca81F10feeACD202e5f8Bc13D3594094` |
 | **USDC Market** | |
 | USDC Token | `0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8` |
 | aUSDC | `0x7547036AB54E8F3374D256Ccd71ad9C2E9F615C4` |
