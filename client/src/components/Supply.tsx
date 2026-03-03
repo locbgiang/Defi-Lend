@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useAccount, useBalance, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther } from 'viem';
+import { useAccount, useBalance, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { parseEther, parseUnits } from 'viem';
 import { useLocation } from 'react-router-dom';
 import { useMarkets } from '../hooks/useMarkets';
 import { useUserBalances } from '../hooks/usePool';
 import { formatPercent } from '../utils/formatters';
-import { CONTRACTS, WETH_GATEWAY_ABI } from '../config/contracts';
+import { CONTRACTS, WETH_GATEWAY_ABI, POOL_ABI, ERC20_ABI } from '../config/contracts';
 import '../styles/Supply.css';
 
 function Supply() {
@@ -15,14 +15,31 @@ function Supply() {
 
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [ethAmount, setEthAmount] = useState('');
+  const [withdrawAmounts, setWithdrawAmounts] = useState<Record<string, string>>({});
+  const [withdrawEthAmount, setWithdrawEthAmount] = useState('');
   
   const { markets, isLoading: marketsLoading } = useMarkets();
   const { balances, isLoading: balancesLoading, refetch: refetchBalances } = useUserBalances(address);
   const { data: ethBalance } = useBalance({ address });
 
-  // Write contract hook for ETH deposit
-  const { writeContract, data: txHash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  // Write contract hooks
+  const { writeContract: writeDeposit, data: depositTxHash, isPending: isDepositPending } = useWriteContract();
+  const { isLoading: isDepositConfirming, isSuccess: isDepositSuccess } = useWaitForTransactionReceipt({ hash: depositTxHash });
+
+  const { writeContract: writeWithdraw, data: withdrawTxHash, isPending: isWithdrawPending } = useWriteContract();
+  const { isLoading: isWithdrawConfirming, isSuccess: isWithdrawSuccess } = useWaitForTransactionReceipt({ hash: withdrawTxHash });
+
+  const { writeContract: writeApprove, data: approveTxHash, isPending: isApprovePending } = useWriteContract();
+  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveTxHash });
+
+  // Check aWETH allowance for WETHGateway
+  const { data: aWethAllowance, refetch: refetchAllowance } = useReadContract({
+    address: CONTRACTS.ATOKENS.aWETH,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: address ? [address, CONTRACTS.WETH_GATEWAY] : undefined,
+    query: { enabled: !!address },
+  });
 
   const handleAmountChange = (symbol: string, value: string) => {
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
@@ -33,6 +50,18 @@ function Supply() {
   const handleEthAmountChange = (value: string) => {
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setEthAmount(value);
+    }
+  };
+
+  const handleWithdrawAmountChange = (symbol: string, value: string) => {
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setWithdrawAmounts({ ...withdrawAmounts, [symbol]: value });
+    }
+  };
+
+  const handleWithdrawEthAmountChange = (value: string) => {
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setWithdrawEthAmount(value);
     }
   };
 
@@ -49,10 +78,20 @@ function Supply() {
     }
   };
 
+  const handleMaxWithdrawClick = (symbol: string) => {
+    const supplied = balances[symbol]?.supplied || '0';
+    setWithdrawAmounts({ ...withdrawAmounts, [symbol]: supplied });
+  };
+
+  const handleMaxWithdrawEthClick = () => {
+    const supplied = balances['WETH']?.supplied || '0';
+    setWithdrawEthAmount(supplied);
+  };
+
   const handleDepositETH = () => {
     if (!ethAmount || parseFloat(ethAmount) <= 0) return;
     
-    writeContract({
+    writeDeposit({
       address: CONTRACTS.WETH_GATEWAY,
       abi: WETH_GATEWAY_ABI,
       functionName: 'depositETH',
@@ -60,9 +99,57 @@ function Supply() {
     });
   };
 
-  // Refetch balances after successful deposit
-  if (isSuccess) {
+  const handleWithdrawERC20 = (symbol: string, tokenAddress: `0x${string}`, decimals: number) => {
+    const amount = withdrawAmounts[symbol];
+    if (!amount || parseFloat(amount) <= 0 || !address) return;
+    
+    const amountInWei = parseUnits(amount, decimals);
+    
+    writeWithdraw({
+      address: CONTRACTS.POOL,
+      abi: POOL_ABI,
+      functionName: 'withdraw',
+      args: [tokenAddress, amountInWei, address],
+    });
+  };
+
+  const handleApproveAWeth = () => {
+    writeApprove({
+      address: CONTRACTS.ATOKENS.aWETH,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [CONTRACTS.WETH_GATEWAY, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')],
+    });
+  };
+
+  const handleWithdrawETH = () => {
+    if (!withdrawEthAmount || parseFloat(withdrawEthAmount) <= 0) return;
+    
+    const amountInWei = parseEther(withdrawEthAmount);
+    
+    writeWithdraw({
+      address: CONTRACTS.WETH_GATEWAY,
+      abi: WETH_GATEWAY_ABI,
+      functionName: 'withdrawETH',
+      args: [amountInWei],
+    });
+  };
+
+  // Check if user needs to approve aWETH for WETHGateway
+  const needsAWethApproval = (amount: string) => {
+    if (!amount || !aWethAllowance) return true;
+    try {
+      const amountInWei = parseEther(amount);
+      return (aWethAllowance as bigint) < amountInWei;
+    } catch {
+      return true;
+    }
+  };
+
+  // Refetch balances after successful transactions
+  if (isDepositSuccess || isWithdrawSuccess || isApproveSuccess) {
     refetchBalances();
+    refetchAllowance();
   }
 
   const formatBalance = (value: string, decimals: number = 2) => {
@@ -75,6 +162,10 @@ function Supply() {
   const ethBalanceFormatted = ethBalance 
     ? (Number(ethBalance.value) / 1e18).toFixed(4) 
     : '0.0000';
+
+  // Combined loading/pending states
+  const isPending = isDepositPending || isWithdrawPending || isApprovePending;
+  const isConfirming = isDepositConfirming || isWithdrawConfirming || isApproveConfirming;
 
   if (!isConnected) {
     return (
@@ -162,7 +253,7 @@ function Supply() {
                 <span className="supply-eth-note-text">ETH is wrapped to WETH on deposit</span>
               </div>
               
-              {isSuccess && (
+              {isDepositSuccess && (
                 <p className="supply-success">✓ ETH deposited successfully!</p>
               )}
             </div>
@@ -242,18 +333,113 @@ function Supply() {
           {/* Your Supplies Section */}
           <div className="supply-section">
             <h2 className="supply-section-title">Your Supplies</h2>
-            {markets.some(m => parseFloat(balances[m.symbol]?.supplied || '0') > 0) ? (
-              <div className="supply-positions">
-                {markets.map((market) => {
-                  const supplied = parseFloat(balances[market.symbol]?.supplied || '0');
-                  if (supplied <= 0) return null;
-                  return (
-                    <div key={market.symbol} className="supply-position-row">
+            
+            {/* Check if user has any supplies including WETH */}
+            {(markets.some(m => parseFloat(balances[m.symbol]?.supplied || '0') > 0) || parseFloat(balances['WETH']?.supplied || '0') > 0) ? (
+              <div className="supply-positions-grid">
+                {/* WETH/ETH Position */}
+                {parseFloat(balances['WETH']?.supplied || '0') > 0 && (
+                  <div className="supply-position-card">
+                    <div className="supply-position-header">
                       <div className="supply-position-asset">
-                        <span>{market.icon}</span>
-                        <span>{market.symbol}</span>
+                        <span className="supply-asset-icon">⟠</span>
+                        <div>
+                          <p className="supply-asset-symbol">WETH</p>
+                          <p className="supply-asset-name">Wrapped Ether</p>
+                        </div>
                       </div>
-                      <span>{formatBalance(balances[market.symbol]?.supplied || '0', 4)} {market.symbol}</span>
+                      <div style={{ textAlign: 'right' }}>
+                        <p className="supply-position-label">Supplied</p>
+                        <p className="supply-position-value">{formatBalance(balances['WETH']?.supplied || '0', 4)} WETH</p>
+                      </div>
+                    </div>
+                    
+                    <div className="supply-input-group">
+                      <label className="supply-input-label">Amount to Withdraw</label>
+                      <div className="supply-input-wrapper">
+                        <input
+                          type="text"
+                          value={withdrawEthAmount}
+                          onChange={(e) => handleWithdrawEthAmountChange(e.target.value)}
+                          placeholder="0.00"
+                          className="supply-input"
+                        />
+                        <button onClick={handleMaxWithdrawEthClick} className="supply-max-btn">
+                          MAX
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {needsAWethApproval(withdrawEthAmount) ? (
+                      <button
+                        onClick={handleApproveAWeth}
+                        disabled={!withdrawEthAmount || parseFloat(withdrawEthAmount) <= 0 || isApprovePending || isApproveConfirming}
+                        className="supply-btn supply-btn--approve"
+                      >
+                        {isApprovePending ? 'Confirm in Wallet...' : isApproveConfirming ? 'Approving...' : 'Approve WETH Withdrawal'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleWithdrawETH}
+                        disabled={!withdrawEthAmount || parseFloat(withdrawEthAmount) <= 0 || parseFloat(withdrawEthAmount) > parseFloat(balances['WETH']?.supplied || '0') || isWithdrawPending || isWithdrawConfirming}
+                        className="supply-btn supply-btn--withdraw"
+                      >
+                        {isWithdrawPending ? 'Confirm in Wallet...' : isWithdrawConfirming ? 'Withdrawing...' : 'Withdraw as ETH'}
+                      </button>
+                    )}
+                    
+                    <div className="supply-eth-note">
+                      <span className="supply-eth-note-icon">ℹ️</span>
+                      <span className="supply-eth-note-text">WETH is unwrapped to ETH on withdrawal</span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Other token positions */}
+                {markets.filter(m => m.symbol !== 'WETH').map((market) => {
+                  const supplied = balances[market.symbol]?.supplied || '0';
+                  const suppliedNum = parseFloat(supplied);
+                  if (suppliedNum <= 0) return null;
+                  
+                  return (
+                    <div key={market.symbol} className="supply-position-card">
+                      <div className="supply-position-header">
+                        <div className="supply-position-asset">
+                          <span className="supply-asset-icon">{market.icon}</span>
+                          <div>
+                            <p className="supply-asset-symbol">{market.symbol}</p>
+                            <p className="supply-asset-name">{market.name}</p>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <p className="supply-position-label">Supplied</p>
+                          <p className="supply-position-value">{formatBalance(supplied, 4)} {market.symbol}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="supply-input-group">
+                        <label className="supply-input-label">Amount to Withdraw</label>
+                        <div className="supply-input-wrapper">
+                          <input
+                            type="text"
+                            value={withdrawAmounts[market.symbol] || ''}
+                            onChange={(e) => handleWithdrawAmountChange(market.symbol, e.target.value)}
+                            placeholder="0.00"
+                            className="supply-input"
+                          />
+                          <button onClick={() => handleMaxWithdrawClick(market.symbol)} className="supply-max-btn">
+                            MAX
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => handleWithdrawERC20(market.symbol, market.address, market.decimals)}
+                        disabled={!withdrawAmounts[market.symbol] || parseFloat(withdrawAmounts[market.symbol]) <= 0 || parseFloat(withdrawAmounts[market.symbol]) > suppliedNum || isWithdrawPending || isWithdrawConfirming}
+                        className="supply-btn supply-btn--withdraw"
+                      >
+                        {isWithdrawPending ? 'Confirm in Wallet...' : isWithdrawConfirming ? 'Withdrawing...' : `Withdraw ${market.symbol}`}
+                      </button>
                     </div>
                   );
                 })}
