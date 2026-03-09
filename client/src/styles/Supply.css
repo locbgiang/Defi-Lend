@@ -298,44 +298,64 @@
 }
 
 .supply-position-card {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.supply-position-header {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 20px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.supply-position-card-header {
+  display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
+  align-items: center;
 }
 
-.supply-position-label {
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 4px;
-}
-
-.supply-position-value {
-  font-size: 16px;
+.supply-position-badge {
+  background: #ecfdf5;
+  color: #059669;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #1a1a2e;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid #a7f3d0;
 }
 
-/* Withdraw button styles */
-.supply-btn--withdraw {
-  background-color: #ff6b35 !important;
+.supply-position-stats {
+  display: flex;
+  gap: 12px;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 12px;
 }
 
-.supply-btn--withdraw:hover {
-  background-color: #e55a2b !important;
+.supply-position-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
 }
 
-.supply-btn--approve {
-  background-color: #9c27b0 !important;
+.supply-position-stat-label {
+  font-size: 0.75rem;
+  color: #6b7280;
 }
 
-.supply-btn--approve:hover {
-  background-color: #7b1fa2 !important;
+.supply-position-stat-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.supply-position-stat-apy {
+  color: #059669;
+}
+
+.supply-position-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 4px 0;
 }

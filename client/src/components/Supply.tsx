@@ -334,25 +334,35 @@ function Supply() {
           <div className="supply-section">
             <h2 className="supply-section-title">Your Supplies</h2>
             
-            {/* Check if user has any supplies including WETH */}
             {(markets.some(m => parseFloat(balances[m.symbol]?.supplied || '0') > 0) || parseFloat(balances['WETH']?.supplied || '0') > 0) ? (
               <div className="supply-positions-grid">
+                
                 {/* WETH/ETH Position */}
                 {parseFloat(balances['WETH']?.supplied || '0') > 0 && (
                   <div className="supply-position-card">
-                    <div className="supply-position-header">
+                    <div className="supply-position-card-header">
                       <div className="supply-position-asset">
                         <span className="supply-asset-icon">⟠</span>
                         <div>
-                          <p className="supply-asset-symbol">WETH</p>
+                          <p className="supply-asset-symbol">ETH</p>
                           <p className="supply-asset-name">Wrapped Ether</p>
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <p className="supply-position-label">Supplied</p>
-                        <p className="supply-position-value">{formatBalance(balances['WETH']?.supplied || '0', 4)} WETH</p>
+                      <div className="supply-position-badge">Supplied</div>
+                    </div>
+
+                    <div className="supply-position-stats">
+                      <div className="supply-position-stat">
+                        <span className="supply-position-stat-label">Balance</span>
+                        <span className="supply-position-stat-value">{formatBalance(balances['WETH']?.supplied || '0', 4)} ETH</span>
+                      </div>
+                      <div className="supply-position-stat">
+                        <span className="supply-position-stat-label">APY</span>
+                        <span className="supply-position-stat-value supply-position-stat-apy">{wethMarket ? formatPercent(wethMarket.supplyAPY) : '0.00%'}</span>
                       </div>
                     </div>
+
+                    <div className="supply-position-divider" />
                     
                     <div className="supply-input-group">
                       <label className="supply-input-label">Amount to Withdraw</label>
@@ -364,9 +374,7 @@ function Supply() {
                           placeholder="0.00"
                           className="supply-input"
                         />
-                        <button onClick={handleMaxWithdrawEthClick} className="supply-max-btn">
-                          MAX
-                        </button>
+                        <button onClick={handleMaxWithdrawEthClick} className="supply-max-btn">MAX</button>
                       </div>
                     </div>
                     
@@ -376,7 +384,7 @@ function Supply() {
                         disabled={!withdrawEthAmount || parseFloat(withdrawEthAmount) <= 0 || isApprovePending || isApproveConfirming}
                         className="supply-btn supply-btn--approve"
                       >
-                        {isApprovePending ? 'Confirm in Wallet...' : isApproveConfirming ? 'Approving...' : 'Approve WETH Withdrawal'}
+                        {isApprovePending ? 'Confirm in Wallet...' : isApproveConfirming ? 'Approving...' : 'Approve Withdrawal'}
                       </button>
                     ) : (
                       <button
@@ -384,13 +392,13 @@ function Supply() {
                         disabled={!withdrawEthAmount || parseFloat(withdrawEthAmount) <= 0 || parseFloat(withdrawEthAmount) > parseFloat(balances['WETH']?.supplied || '0') || isWithdrawPending || isWithdrawConfirming}
                         className="supply-btn supply-btn--withdraw"
                       >
-                        {isWithdrawPending ? 'Confirm in Wallet...' : isWithdrawConfirming ? 'Withdrawing...' : 'Withdraw as ETH'}
+                        {isWithdrawPending ? 'Confirm in Wallet...' : isWithdrawConfirming ? 'Withdrawing...' : 'Withdraw ETH'}
                       </button>
                     )}
                     
                     <div className="supply-eth-note">
                       <span className="supply-eth-note-icon">ℹ️</span>
-                      <span className="supply-eth-note-text">WETH is unwrapped to ETH on withdrawal</span>
+                      <span className="supply-eth-note-text">You will receive native ETH on withdrawal</span>
                     </div>
                   </div>
                 )}
@@ -398,12 +406,11 @@ function Supply() {
                 {/* Other token positions */}
                 {markets.filter(m => m.symbol !== 'WETH').map((market) => {
                   const supplied = balances[market.symbol]?.supplied || '0';
-                  const suppliedNum = parseFloat(supplied);
-                  if (suppliedNum <= 0) return null;
+                  if (parseFloat(supplied) <= 0) return null;
                   
                   return (
                     <div key={market.symbol} className="supply-position-card">
-                      <div className="supply-position-header">
+                      <div className="supply-position-card-header">
                         <div className="supply-position-asset">
                           <span className="supply-asset-icon">{market.icon}</span>
                           <div>
@@ -411,11 +418,21 @@ function Supply() {
                             <p className="supply-asset-name">{market.name}</p>
                           </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <p className="supply-position-label">Supplied</p>
-                          <p className="supply-position-value">{formatBalance(supplied, 4)} {market.symbol}</p>
+                        <div className="supply-position-badge">Supplied</div>
+                      </div>
+
+                      <div className="supply-position-stats">
+                        <div className="supply-position-stat">
+                          <span className="supply-position-stat-label">Balance</span>
+                          <span className="supply-position-stat-value">{formatBalance(supplied, market.decimals > 6 ? 4 : 2)} {market.symbol}</span>
+                        </div>
+                        <div className="supply-position-stat">
+                          <span className="supply-position-stat-label">APY</span>
+                          <span className="supply-position-stat-value supply-position-stat-apy">{formatPercent(market.supplyAPY)}</span>
                         </div>
                       </div>
+
+                      <div className="supply-position-divider" />
                       
                       <div className="supply-input-group">
                         <label className="supply-input-label">Amount to Withdraw</label>
@@ -427,15 +444,13 @@ function Supply() {
                             placeholder="0.00"
                             className="supply-input"
                           />
-                          <button onClick={() => handleMaxWithdrawClick(market.symbol)} className="supply-max-btn">
-                            MAX
-                          </button>
+                          <button onClick={() => handleMaxWithdrawClick(market.symbol)} className="supply-max-btn">MAX</button>
                         </div>
                       </div>
                       
                       <button
-                        onClick={() => handleWithdrawERC20(market.symbol, market.address, market.decimals)}
-                        disabled={!withdrawAmounts[market.symbol] || parseFloat(withdrawAmounts[market.symbol]) <= 0 || parseFloat(withdrawAmounts[market.symbol]) > suppliedNum || isWithdrawPending || isWithdrawConfirming}
+                        onClick={() => handleWithdrawERC20(market.symbol, market.address as `0x${string}`, market.decimals)}
+                        disabled={!withdrawAmounts[market.symbol] || parseFloat(withdrawAmounts[market.symbol]) <= 0 || parseFloat(withdrawAmounts[market.symbol]) > parseFloat(supplied) || isWithdrawPending || isWithdrawConfirming}
                         className="supply-btn supply-btn--withdraw"
                       >
                         {isWithdrawPending ? 'Confirm in Wallet...' : isWithdrawConfirming ? 'Withdrawing...' : `Withdraw ${market.symbol}`}
