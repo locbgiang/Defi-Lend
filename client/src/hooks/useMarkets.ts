@@ -3,20 +3,21 @@ import { formatUnits } from 'viem';
 import { CONTRACTS, DEBT_TOKENS, POOL_ABI, ERC20_ABI } from '../config/contracts';
 
 export interface MarketData {
+  asset: string;
+  address: string;
   symbol: string;
   name: string;
   icon: string;
-  address: `0x${string}`;
-  aTokenAddress: `0x${string}`;
-  debtTokenAddress: `0x${string}`;
   decimals: number;
   totalSupply: bigint;
   totalBorrow: bigint;
-  totalSupplyFormatted: string;
-  totalBorrowFormatted: string;
-  ltv: number;
-  supplyAPY: number;
-  borrowAPY: number;
+  supplyAPY: string;
+  borrowAPY: string;
+  price: string;
+  ltv: string;
+  liquidationThreshold: string;
+  availableLiquidity: string;
+  utilizationRate: string;
   isActive: boolean;
 }
 
@@ -50,6 +51,33 @@ const MARKET_CONFIG = [
   },
 ] as const;
 
+// Reserve data tuple from Pool.reserves():
+// [aTokenAddress, debtTokenAddress, liquidityIndex, currentLiquidityRate, ltv, liquidationThreshold, liquidationBonus, isActive]
+interface ReserveData {
+  aTokenAddress: string;
+  debtTokenAddress: string;
+  liquidityIndex: bigint;
+  currentLiquidityRate: bigint;
+  ltv: bigint;
+  liquidationThreshold: bigint;
+  liquidationBonus: bigint;
+  isActive: boolean;
+}
+
+function parseReserveData(raw: readonly unknown[] | undefined): ReserveData | undefined {
+  if (!raw || raw.length < 6) return undefined;
+  return {
+    aTokenAddress: raw[0] as string,
+    debtTokenAddress: raw[1] as string,
+    liquidityIndex: raw[2] as bigint,
+    currentLiquidityRate: raw[3] as bigint,
+    ltv: raw[4] as bigint,
+    liquidationThreshold: raw[5] as bigint,
+    liquidationBonus: raw[6] as bigint,
+    isActive: raw[7] as boolean,
+  };
+}
+
 function formatLargeNumber(value: bigint, decimals: number): string {
   const num = Number(formatUnits(value, decimals));
   if (num >= 1_000_000) {
@@ -64,20 +92,17 @@ function formatLargeNumber(value: bigint, decimals: number): string {
 
 export function useMarkets() {
   const contracts = MARKET_CONFIG.flatMap((market) => [
-    // Get reserve data from Pool
     {
       address: CONTRACTS.POOL,
       abi: POOL_ABI,
       functionName: 'reserves',
       args: [market.address],
     },
-    // Get total supply from aToken
     {
       address: market.aTokenAddress,
       abi: ERC20_ABI,
       functionName: 'totalSupply',
     },
-    // Get total borrow from debt token
     {
       address: market.debtTokenAddress,
       abi: ERC20_ABI,
@@ -94,33 +119,40 @@ export function useMarkets() {
 
   const markets: MarketData[] = MARKET_CONFIG.map((market, index) => {
     const baseIndex = index * 3;
-    const reserveData = data?.[baseIndex]?.result as [string, string, bigint, bigint, bigint, boolean] | undefined;
+    const rawReserve = data?.[baseIndex]?.result as readonly unknown[] | undefined;
+    const reserveData = parseReserveData(rawReserve);
     const totalSupply = data?.[baseIndex + 1]?.result as bigint | undefined;
     const totalBorrow = data?.[baseIndex + 2]?.result as bigint | undefined;
-
-    const ltv = reserveData ? Number(reserveData[4]) / 100 : 75; // Default 75%
-    const isActive = reserveData ? reserveData[5] : false;
 
     const supply = totalSupply ?? 0n;
     const borrow = totalBorrow ?? 0n;
 
-    // Calculate utilization-based APY (simplified model)
-    // In a real protocol, this would come from an interest rate model contract
+    // Calculate utilization-based APY
     const utilization = supply > 0n ? Number((borrow * 10000n) / supply) / 100 : 0;
-    const baseRate = 2; // 2% base
-    const borrowAPY = baseRate + utilization * 0.1; // Increases with utilization
-    const supplyAPY = borrowAPY * (utilization / 100) * 0.9; // 90% of borrow interest goes to suppliers
+    const baseRate = 2;
+    const borrowAPY = baseRate + utilization * 0.1;
+    const supplyAPY = borrowAPY * (utilization / 100) * 0.9;
+
+    const ltv = reserveData ? Number(reserveData.ltv) : 7500;
+    const liquidationThreshold = reserveData ? Number(reserveData.liquidationThreshold) : 8000;
 
     return {
-      ...market,
+      asset: market.address,
+      address: market.address,
+      symbol: market.symbol,
+      name: market.name,
+      icon: market.icon,
+      decimals: market.decimals,
       totalSupply: supply,
       totalBorrow: borrow,
-      totalSupplyFormatted: formatLargeNumber(supply, market.decimals),
-      totalBorrowFormatted: formatLargeNumber(borrow, market.decimals),
-      ltv,
-      supplyAPY: Math.max(supplyAPY, 0),
-      borrowAPY,
-      isActive,
+      supplyAPY: supplyAPY.toFixed(2),
+      borrowAPY: borrowAPY.toFixed(2),
+      price: '0', // fetched separately via PriceOracle if needed
+      ltv: (ltv / 100).toFixed(0),
+      liquidationThreshold: (liquidationThreshold / 100).toFixed(0),
+      availableLiquidity: supply > borrow ? formatUnits(supply - borrow, market.decimals) : '0',
+      utilizationRate: utilization.toFixed(2),
+      isActive: reserveData?.isActive ?? false,
     };
   });
 

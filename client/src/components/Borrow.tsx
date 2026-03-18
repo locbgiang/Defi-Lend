@@ -97,7 +97,7 @@ function Borrow() {
       functionName: 'borrow',
       args: [
         market.address as `0x${string}`,
-        parseUnits(amount, market.decimals),
+        parseUnits(amount, Number(market.decimals)),
         address,
       ],
     });
@@ -113,7 +113,7 @@ function Borrow() {
       functionName: 'approve',
       args: [
         CONTRACTS.POOL as `0x${string}`,
-        parseUnits(amount, market.decimals),
+        parseUnits(amount, Number(market.decimals)),
       ],
     });
   };
@@ -128,7 +128,7 @@ function Borrow() {
       functionName: 'repay',
       args: [
         market.address as `0x${string}`,
-        parseUnits(amount, market.decimals),
+        parseUnits(amount, Number(market.decimals)),
         address,
       ],
     });
@@ -271,11 +271,13 @@ function Borrow() {
                       <button
                         className="borrow-max-btn"
                         onClick={() => {
-                          if (parseFloat(market.price) > 0) {
-                            const maxBorrow = availableToBorrow / parseFloat(market.price);
+                          const price = parseFloat(market.price);
+                          if (price > 0) {
+                            const maxBorrow = availableToBorrow / price;
                             const maxLiquidity = parseFloat(liquidity);
-                            const max = Math.min(maxBorrow, maxLiquidity) * 0.99; // 99% to avoid rounding issues
-                            setAmounts({ ...amounts, [market.symbol]: max.toFixed(market.decimals > 6 ? 6 : 2) });
+                            const max = Math.min(maxBorrow, maxLiquidity) * 0.99;
+                            const decimals = Number(market.decimals);
+                            setAmounts({ ...amounts, [market.symbol]: max.toFixed(decimals > 6 ? 6 : 2) });
                           }
                         }}
                       >
