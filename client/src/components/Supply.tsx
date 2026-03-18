@@ -207,7 +207,7 @@ function Supply() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <p className="supply-apy-label">Supply APY</p>
-                  <p className="supply-apy-value">{wethMarket ? formatPercent(wethMarket.supplyAPY) : '0.00%'}</p>
+                  <p className="supply-apy-value">{wethMarket ? formatPercent(parseFloat(wethMarket.supplyAPY)) : '0.00%'}</p>
                 </div>
               </div>
 
@@ -278,7 +278,7 @@ function Supply() {
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <p className="supply-apy-label">Supply APY</p>
-                      <p className="supply-apy-value">{formatPercent(market.supplyAPY)}</p>
+                      <p className="supply-apy-value">{formatPercent(parseFloat(market.supplyAPY))}</p>
                     </div>
                   </div>
 
@@ -358,7 +358,7 @@ function Supply() {
                       </div>
                       <div className="supply-position-stat">
                         <span className="supply-position-stat-label">APY</span>
-                        <span className="supply-position-stat-value supply-position-stat-apy">{wethMarket ? formatPercent(wethMarket.supplyAPY) : '0.00%'}</span>
+                        <span className="supply-position-stat-value supply-position-stat-apy">{wethMarket ? formatPercent(parseFloat(wethMarket.supplyAPY)) : '0.00%'}</span>
                       </div>
                     </div>
 
@@ -428,7 +428,7 @@ function Supply() {
                         </div>
                         <div className="supply-position-stat">
                           <span className="supply-position-stat-label">APY</span>
-                          <span className="supply-position-stat-value supply-position-stat-apy">{formatPercent(market.supplyAPY)}</span>
+                          <span className="supply-position-stat-value supply-position-stat-apy">{formatPercent(parseFloat(market.supplyAPY))}</span>
                         </div>
                       </div>
 

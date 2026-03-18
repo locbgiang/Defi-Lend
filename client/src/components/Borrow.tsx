@@ -5,9 +5,9 @@ import { formatUnits, parseUnits } from 'viem';
 import { useMarkets } from '../hooks/useMarkets';
 import { useUserAccountData, useUserBalances } from '../hooks/usePool';
 import { formatPercent } from '../utils/formatters';
-import { CONTRACTS } from '../config/contracts';
-import { POOL_ABI } from '../config/abis/pool';
-import { ERC20_ABI } from '../config/abis/erc20';
+import { CONTRACTS, DEBT_TOKENS } from '../config/contracts';
+import { POOL_ABI } from '../config/contracts';
+import { ERC20_ABI } from '../config/contracts';
 import '../styles/Borrow.css';
 
 function Borrow() {
@@ -239,7 +239,7 @@ function Borrow() {
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <p className="borrow-apy-label">Borrow APY</p>
-                      <p className="borrow-apy-value">{formatPercent(market.borrowAPY)}</p>
+                      <p className="borrow-apy-value">{formatPercent(parseFloat(market.borrowAPY))}</p>
                     </div>
                   </div>
 
@@ -363,7 +363,7 @@ function Borrow() {
                         <div className="borrow-position-stat">
                           <span className="borrow-position-stat-label">APY</span>
                           <span className="borrow-position-stat-value borrow-position-stat-apy">
-                            {formatPercent(market.borrowAPY)}
+                            {formatPercent(parseFloat(market.borrowAPY))}
                           </span>
                         </div>
                       </div>
