@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { useLocation } from 'react-router-dom';
-import { formatUnits } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 import { useMarkets } from '../hooks/useMarkets';
 import { useUserAccountData, useUserBalances } from '../hooks/usePool';
 import { formatPercent } from '../utils/formatters';
+import { CONTRACTS } from '../config/contracts';
+import { POOL_ABI } from '../config/abis/pool';
+import { ERC20_ABI } from '../config/abis/erc20';
 import '../styles/Borrow.css';
 
 function Borrow() {
@@ -13,31 +16,122 @@ function Borrow() {
   const selectedAsset = location.state?.asset || null;
 
   const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [repayAmounts, setRepayAmounts] = useState<Record<string, string>>({});
 
   const { markets, isLoading: marketsLoading } = useMarkets();
-  const { data: accountData, isLoading: accountLoading } = useUserAccountData(address);
-  const { balances, isLoading: balancesLoading } = useUserBalances(address);
+  const { data: accountData, isLoading: accountLoading, refetch: refetchAccountData } = useUserAccountData(address);
+  const { balances, isLoading: balancesLoading, refetch: refetchBalances } = useUserBalances(address);
+
+  // Borrow contract hooks
+  const { writeContract: writeBorrow, data: borrowTxHash, isPending: isBorrowPending } = useWriteContract();
+  const { isLoading: isBorrowConfirming, isSuccess: isBorrowSuccess } = useWaitForTransactionReceipt({ hash: borrowTxHash });
+
+  // Repay contract hooks
+  const { writeContract: writeApprove, data: approveTxHash, isPending: isApprovePending } = useWriteContract();
+  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveTxHash });
+
+  const { writeContract: writeRepay, data: repayTxHash, isPending: isRepayPending } = useWriteContract();
+  const { isLoading: isRepayConfirming, isSuccess: isRepaySuccess } = useWaitForTransactionReceipt({ hash: repayTxHash });
+
+  // Refetch after successful transactions
+  if (isBorrowSuccess || isRepaySuccess) {
+    refetchBalances();
+    refetchAccountData();
+  }
 
   // Format user account data from blockchain (values are in 18 decimals base currency)
   const totalCollateral = accountData ? Number(formatUnits(accountData.totalCollateralBase, 18)) : 0;
   const totalBorrowed = accountData ? Number(formatUnits(accountData.totalDebtBase, 18)) : 0;
   const availableToBorrow = accountData ? Number(formatUnits(accountData.availableBorrowsBase, 18)) : 0;
-  
+
   // Health factor is scaled by 1e18, infinity if no debt
-  const healthFactor = accountData 
-    ? accountData.totalDebtBase === 0n 
-      ? '∞' 
+  const healthFactor = accountData
+    ? accountData.totalDebtBase === 0n
+      ? '∞'
       : (Number(formatUnits(accountData.healthFactor, 18))).toFixed(2)
     : '∞';
 
-  const borrowingPowerUsed = availableToBorrow > 0 
-    ? (totalBorrowed / (totalBorrowed + availableToBorrow)) * 100 
+  const borrowingPowerUsed = availableToBorrow > 0
+    ? (totalBorrowed / (totalBorrowed + availableToBorrow)) * 100
     : 0;
+
+  // Calculate estimated new health factor after borrow
+  const getNewHealthFactor = (market: typeof markets[0], borrowAmount: string) => {
+    if (!accountData || !borrowAmount || parseFloat(borrowAmount) <= 0) return null;
+    
+    const borrowValue = parseFloat(borrowAmount) * parseFloat(market.price);
+    const newTotalDebt = totalBorrowed + borrowValue;
+    
+    if (newTotalDebt <= 0) return '∞';
+
+    // HF = (totalCollateral * liquidationThreshold) / totalDebt
+    const liquidationThreshold = Number(accountData.currentLiquidationThreshold) / 10000;
+    const newHF = (totalCollateral * liquidationThreshold) / newTotalDebt;
+    return newHF.toFixed(2);
+  };
 
   const handleAmountChange = (symbol: string, value: string) => {
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setAmounts({ ...amounts, [symbol]: value });
     }
+  };
+
+  const handleRepayAmountChange = (symbol: string, value: string) => {
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setRepayAmounts({ ...repayAmounts, [symbol]: value });
+    }
+  };
+
+  const handleMaxRepay = (symbol: string) => {
+    const borrowed = balances[symbol]?.borrowed || '0';
+    setRepayAmounts({ ...repayAmounts, [symbol]: borrowed });
+  };
+
+  const handleBorrow = (market: typeof markets[0]) => {
+    const amount = amounts[market.symbol];
+    if (!amount || parseFloat(amount) <= 0 || !address) return;
+
+    writeBorrow({
+      address: CONTRACTS.POOL as `0x${string}`,
+      abi: POOL_ABI,
+      functionName: 'borrow',
+      args: [
+        market.address as `0x${string}`,
+        parseUnits(amount, market.decimals),
+        address,
+      ],
+    });
+  };
+
+  const handleApproveRepay = (market: typeof markets[0]) => {
+    const amount = repayAmounts[market.symbol];
+    if (!amount || parseFloat(amount) <= 0) return;
+
+    writeApprove({
+      address: market.address as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [
+        CONTRACTS.POOL as `0x${string}`,
+        parseUnits(amount, market.decimals),
+      ],
+    });
+  };
+
+  const handleRepay = (market: typeof markets[0]) => {
+    const amount = repayAmounts[market.symbol];
+    if (!amount || parseFloat(amount) <= 0 || !address) return;
+
+    writeRepay({
+      address: CONTRACTS.POOL as `0x${string}`,
+      abi: POOL_ABI,
+      functionName: 'repay',
+      args: [
+        market.address as `0x${string}`,
+        parseUnits(amount, market.decimals),
+        address,
+      ],
+    });
   };
 
   const formatBalance = (value: string, decimals: number = 2) => {
@@ -47,7 +141,6 @@ function Borrow() {
     return num.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   };
 
-  // Calculate available liquidity for each market (total supply - total borrow)
   const getAvailableLiquidity = (market: typeof markets[0]) => {
     const available = market.totalSupply - market.totalBorrow;
     return available > 0n ? formatUnits(available, market.decimals) : '0';
@@ -110,9 +203,7 @@ function Borrow() {
             <div className="borrow-power-bar">
               <div className="borrow-power-bar-header">
                 <span className="borrow-power-bar-label">Borrowing Power Used</span>
-                <span className="borrow-power-bar-value">
-                  {borrowingPowerUsed.toFixed(1)}%
-                </span>
+                <span className="borrow-power-bar-value">{borrowingPowerUsed.toFixed(1)}%</span>
               </div>
               <div className="borrow-progress-track">
                 <div
@@ -127,7 +218,11 @@ function Borrow() {
           <div className="borrow-cards">
             {markets.map((market) => {
               const liquidity = getAvailableLiquidity(market);
-              
+              const newHF = getNewHealthFactor(market, amounts[market.symbol] || '');
+              const borrowAmount = parseFloat(amounts[market.symbol] || '0');
+              const borrowValue = borrowAmount * parseFloat(market.price);
+              const exceedsLimit = borrowValue > availableToBorrow;
+
               return (
                 <div
                   key={market.symbol}
@@ -156,36 +251,78 @@ function Borrow() {
                         {formatBalance(liquidity, market.decimals > 6 ? 4 : 2)} {market.symbol}
                       </span>
                     </div>
+                    <div className="borrow-liquidity-row">
+                      <span className="borrow-liquidity-label">Price</span>
+                      <span className="borrow-liquidity-value">${parseFloat(market.price).toLocaleString()}</span>
+                    </div>
                   </div>
 
                   {/* Amount Input */}
                   <div className="borrow-input-group">
                     <label className="borrow-input-label">Amount to Borrow</label>
-                    <input
-                      type="text"
-                      value={amounts[market.symbol] || ''}
-                      onChange={(e) => handleAmountChange(market.symbol, e.target.value)}
-                      placeholder="0.00"
-                      className="borrow-input"
-                    />
+                    <div className="borrow-input-wrapper">
+                      <input
+                        type="text"
+                        value={amounts[market.symbol] || ''}
+                        onChange={(e) => handleAmountChange(market.symbol, e.target.value)}
+                        placeholder="0.00"
+                        className="borrow-input"
+                      />
+                      <button
+                        className="borrow-max-btn"
+                        onClick={() => {
+                          if (parseFloat(market.price) > 0) {
+                            const maxBorrow = availableToBorrow / parseFloat(market.price);
+                            const maxLiquidity = parseFloat(liquidity);
+                            const max = Math.min(maxBorrow, maxLiquidity) * 0.99; // 99% to avoid rounding issues
+                            setAmounts({ ...amounts, [market.symbol]: max.toFixed(market.decimals > 6 ? 6 : 2) });
+                          }
+                        }}
+                      >
+                        MAX
+                      </button>
+                    </div>
+                    {borrowAmount > 0 && (
+                      <p className="borrow-input-usd">
+                        ≈ ${borrowValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    )}
                   </div>
 
                   {/* New Health Factor Preview */}
                   {amounts[market.symbol] && parseFloat(amounts[market.symbol]) > 0 && (
-                    <div className="borrow-health-preview">
+                    <div className={`borrow-health-preview ${exceedsLimit ? 'borrow-health-preview--danger' : ''}`}>
                       <div className="borrow-health-preview-row">
                         <span className="borrow-health-preview-label">New Health Factor</span>
-                        <span className="borrow-health-preview-value">~calculating...</span>
+                        <span className={`borrow-health-preview-value ${newHF && parseFloat(newHF) < 1.2 ? 'borrow-health-preview-value--danger' : 'borrow-health-preview-value--safe'}`}>
+                          {exceedsLimit ? '⚠️ Exceeds limit' : newHF ?? '∞'}
+                        </span>
                       </div>
                     </div>
                   )}
 
                   {/* Borrow Button */}
                   <button
-                    disabled={!amounts[market.symbol] || parseFloat(amounts[market.symbol]) <= 0 || availableToBorrow <= 0}
+                    onClick={() => handleBorrow(market)}
+                    disabled={
+                      !amounts[market.symbol] ||
+                      parseFloat(amounts[market.symbol]) <= 0 ||
+                      availableToBorrow <= 0 ||
+                      exceedsLimit ||
+                      isBorrowPending ||
+                      isBorrowConfirming
+                    }
                     className="borrow-btn"
                   >
-                    {availableToBorrow <= 0 ? 'No Collateral' : `Borrow ${market.symbol}`}
+                    {availableToBorrow <= 0
+                      ? 'No Collateral'
+                      : exceedsLimit
+                      ? 'Exceeds Borrow Limit'
+                      : isBorrowPending
+                      ? 'Confirm in Wallet...'
+                      : isBorrowConfirming
+                      ? 'Borrowing...'
+                      : `Borrow ${market.symbol}`}
                   </button>
                 </div>
               );
@@ -196,17 +333,84 @@ function Borrow() {
           <div className="borrow-section">
             <h2 className="borrow-section-title">Your Borrows</h2>
             {markets.some(m => parseFloat(balances[m.symbol]?.borrowed || '0') > 0) ? (
-              <div className="borrow-positions">
+              <div className="borrow-positions-grid">
                 {markets.map((market) => {
-                  const borrowed = parseFloat(balances[market.symbol]?.borrowed || '0');
-                  if (borrowed <= 0) return null;
+                  const borrowed = balances[market.symbol]?.borrowed || '0';
+                  if (parseFloat(borrowed) <= 0) return null;
+
                   return (
-                    <div key={market.symbol} className="borrow-position-row">
-                      <div className="borrow-position-asset">
-                        <span>{market.icon}</span>
-                        <span>{market.symbol}</span>
+                    <div key={market.symbol} className="borrow-position-card">
+                      <div className="borrow-position-card-header">
+                        <div className="borrow-position-asset">
+                          <span className="borrow-asset-icon">{market.icon}</span>
+                          <div>
+                            <p className="borrow-asset-symbol">{market.symbol}</p>
+                            <p className="borrow-asset-name">{market.name}</p>
+                          </div>
+                        </div>
+                        <div className="borrow-position-badge">Borrowed</div>
                       </div>
-                      <span>{formatBalance(balances[market.symbol]?.borrowed || '0', 4)} {market.symbol}</span>
+
+                      <div className="borrow-position-stats">
+                        <div className="borrow-position-stat">
+                          <span className="borrow-position-stat-label">Balance</span>
+                          <span className="borrow-position-stat-value">
+                            {formatBalance(borrowed, market.decimals > 6 ? 6 : 2)} {market.symbol}
+                          </span>
+                        </div>
+                        <div className="borrow-position-stat">
+                          <span className="borrow-position-stat-label">APY</span>
+                          <span className="borrow-position-stat-value borrow-position-stat-apy">
+                            {formatPercent(market.borrowAPY)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="borrow-position-divider" />
+
+                      <div className="borrow-input-group">
+                        <label className="borrow-input-label">Amount to Repay</label>
+                        <div className="borrow-input-wrapper">
+                          <input
+                            type="text"
+                            value={repayAmounts[market.symbol] || ''}
+                            onChange={(e) => handleRepayAmountChange(market.symbol, e.target.value)}
+                            placeholder="0.00"
+                            className="borrow-input"
+                          />
+                          <button onClick={() => handleMaxRepay(market.symbol)} className="borrow-max-btn">
+                            MAX
+                          </button>
+                        </div>
+                      </div>
+
+                      {isApproveSuccess ? (
+                        <button
+                          onClick={() => handleRepay(market)}
+                          disabled={
+                            !repayAmounts[market.symbol] ||
+                            parseFloat(repayAmounts[market.symbol]) <= 0 ||
+                            isRepayPending ||
+                            isRepayConfirming
+                          }
+                          className="borrow-btn borrow-btn--repay"
+                        >
+                          {isRepayPending ? 'Confirm in Wallet...' : isRepayConfirming ? 'Repaying...' : `Repay ${market.symbol}`}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleApproveRepay(market)}
+                          disabled={
+                            !repayAmounts[market.symbol] ||
+                            parseFloat(repayAmounts[market.symbol]) <= 0 ||
+                            isApprovePending ||
+                            isApproveConfirming
+                          }
+                          className="borrow-btn borrow-btn--approve"
+                        >
+                          {isApprovePending ? 'Confirm in Wallet...' : isApproveConfirming ? 'Approving...' : `Approve ${market.symbol}`}
+                        </button>
+                      )}
                     </div>
                   );
                 })}
