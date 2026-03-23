@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useMarkets } from '../hooks/useMarkets';
 import { formatPercent } from '../utils/formatters';
+import { formatUnits } from '../utils/formatters';
 import '../styles/Markets.css';
 
 function Markets() {
@@ -43,7 +44,9 @@ function Markets() {
               </div>
 
               {/* Total Supply */}
-              <span className="markets-value">{market.totalSupplyFormatted}</span>
+              <span className="markets-value">
+                {formatUnits(market.totalSupply, Number(market.decimals))} {market.symbol}
+              </span>
 
               {/* Supply APY */}
               <span className="markets-value markets-value--green">
@@ -51,7 +54,9 @@ function Markets() {
               </span>
 
               {/* Total Borrow */}
-              <span className="markets-value">{market.totalBorrowFormatted}</span>
+              <span className="markets-value">
+                {formatUnits(market.totalBorrow, Number(market.decimals))} {market.symbol}
+              </span>
 
               {/* Borrow APY */}
               <span className="markets-value markets-value--red">

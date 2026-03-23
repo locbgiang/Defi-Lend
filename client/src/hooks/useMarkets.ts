@@ -78,18 +78,6 @@ function parseReserveData(raw: readonly unknown[] | undefined): ReserveData | un
   };
 }
 
-function formatLargeNumber(value: bigint, decimals: number): string {
-  const num = Number(formatUnits(value, decimals));
-  if (num >= 1_000_000) {
-    return `$${(num / 1_000_000).toFixed(2)}M`;
-  } else if (num >= 1_000) {
-    return `$${(num / 1_000).toFixed(2)}K`;
-  } else if (num > 0) {
-    return `$${num.toFixed(2)}`;
-  }
-  return '$0';
-}
-
 export function useMarkets() {
   const contracts = MARKET_CONFIG.flatMap((market) => [
     {

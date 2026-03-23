@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import WalletButton from './WalletButton';
 import '../styles/Header.css';
 
@@ -13,10 +13,10 @@ function Header() {
 
       {/* Navigation */}
       <nav className="header-nav">
-        <Link to="/dashboard" className="header-nav-link">Dashboard</Link>
-        <Link to="/markets" className="header-nav-link">Markets</Link>
-        <Link to="/supply" className="header-nav-link">Supply</Link>
-        <Link to="/borrow" className="header-nav-link">Borrow</Link>
+        <NavLink to="/dashboard" className={({ isActive }) => `header-nav-link ${isActive ? 'header-nav-link--active' : ''}`}>Dashboard</NavLink>
+        <NavLink to="/markets" className={({ isActive }) => `header-nav-link ${isActive ? 'header-nav-link--active' : ''}`}>Markets</NavLink>
+        <NavLink to="/supply" className={({ isActive }) => `header-nav-link ${isActive ? 'header-nav-link--active' : ''}`}>Supply</NavLink>
+        <NavLink to="/borrow" className={({ isActive }) => `header-nav-link ${isActive ? 'header-nav-link--active' : ''}`}>Borrow</NavLink>
       </nav>
 
       {/* Wallet Connect Button */}

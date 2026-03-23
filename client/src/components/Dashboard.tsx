@@ -13,18 +13,16 @@ function Dashboard() {
 
   // Format user account data from blockchain (values are in 18 decimals base currency)
   const totalCollateral = accountData ? Number(formatUnits(accountData.totalCollateralBase, 18)) : 0;
-  const totalBorrowed = accountData ? Number(formatUnits(accountData.totalDebtBase, 18)) : 0;
+  const totalDebt = accountData ? Number(formatUnits(accountData.totalDebtBase, 18)) : 0;
   const availableToBorrow = accountData ? Number(formatUnits(accountData.availableBorrowsBase, 18)) : 0;
-  
-  // Health factor is scaled by 1e18, infinity if no debt
-  const healthFactor = accountData 
-    ? accountData.totalDebtBase === 0n 
-      ? '∞' 
-      : (Number(formatUnits(accountData.healthFactor, 18))).toFixed(2)
+  const healthFactor = accountData
+    ? accountData.totalDebtBase === 0n
+      ? '∞'
+      : Number(formatUnits(accountData.healthFactor, 18)).toFixed(2)
     : '∞';
 
   const borrowingPowerUsed = availableToBorrow > 0 
-    ? (totalBorrowed / (totalBorrowed + availableToBorrow)) * 100 
+    ? (totalDebt / (totalDebt + availableToBorrow)) * 100 
     : 0;
 
   // Calculate weighted average APY for supplies
@@ -80,6 +78,9 @@ function Dashboard() {
   const isLoading = accountLoading || balancesLoading || marketsLoading;
   const supplyAPY = calculateSupplyAPY();
   const borrowAPY = calculateBorrowAPY();
+  const netAPY = markets.length > 0
+    ? (markets.reduce((sum, m) => sum + parseFloat(m.supplyAPY), 0) / markets.length).toFixed(2)
+    : '0.00';
 
   return (
     <div>
@@ -117,7 +118,7 @@ function Dashboard() {
         <div className="dashboard-card">
           <p className="dashboard-card-label">Total Borrowed</p>
           <p className="dashboard-card-value dashboard-card-value--red">
-            ${isLoading ? '...' : totalBorrowed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${isLoading ? '...' : totalDebt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <p className="dashboard-card-subtitle">{borrowAPY.toFixed(2)}% APY</p>
         </div>

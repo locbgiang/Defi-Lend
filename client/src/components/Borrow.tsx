@@ -5,9 +5,7 @@ import { formatUnits, parseUnits } from 'viem';
 import { useMarkets } from '../hooks/useMarkets';
 import { useUserAccountData, useUserBalances } from '../hooks/usePool';
 import { formatPercent } from '../utils/formatters';
-import { CONTRACTS, DEBT_TOKENS } from '../config/contracts';
-import { POOL_ABI } from '../config/contracts';
-import { ERC20_ABI } from '../config/contracts';
+import { CONTRACTS, POOL_ABI, ERC20_ABI } from '../config/contracts';
 import '../styles/Borrow.css';
 
 function Borrow() {
