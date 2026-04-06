@@ -35,7 +35,7 @@ function Dashboard() {
         // For stablecoins, value = amount. For WETH, need price conversion
         const value = market.symbol === 'WETH' ? supplied * 2450 : supplied;
         totalValue += value;
-        weightedAPY += value * market.supplyAPY;
+        weightedAPY += value * Number(market.supplyAPY);
       }
     });
     return totalValue > 0 ? weightedAPY / totalValue : 0;
@@ -50,7 +50,7 @@ function Dashboard() {
       if (borrowed > 0) {
         const value = market.symbol === 'WETH' ? borrowed * 2450 : borrowed;
         totalValue += value;
-        weightedAPY += value * market.borrowAPY;
+        weightedAPY += value * Number(market.borrowAPY);
       }
     });
     return totalValue > 0 ? weightedAPY / totalValue : 0;
@@ -162,7 +162,7 @@ function Dashboard() {
                       <span className="dashboard-position-icon">{market.icon}</span>
                       <div>
                         <p className="dashboard-position-symbol">{market.symbol}</p>
-                        <p className="dashboard-position-apy">+{market.supplyAPY.toFixed(2)}% APY</p>
+                        <p className="dashboard-position-apy">+{Number(market.supplyAPY).toFixed(2)}% APY</p>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -198,7 +198,7 @@ function Dashboard() {
                       <span className="dashboard-position-icon">{market.icon}</span>
                       <div>
                         <p className="dashboard-position-symbol">{market.symbol}</p>
-                        <p className="dashboard-position-apy dashboard-position-apy--red">{market.borrowAPY.toFixed(2)}% APY</p>
+                        <p className="dashboard-position-apy dashboard-position-apy--red">{Number(market.borrowAPY).toFixed(2)}% APY</p>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
