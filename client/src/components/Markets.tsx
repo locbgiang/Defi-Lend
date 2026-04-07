@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useMarkets } from '../hooks/useMarkets';
 import { formatPercent } from '../utils/formatters';
-import { formatUnits } from '../utils/formatters';
+import { formatUnits } from 'viem';
 import '../styles/Markets.css';
 
 function Markets() {
@@ -50,7 +50,7 @@ function Markets() {
 
               {/* Supply APY */}
               <span className="markets-value markets-value--green">
-                {formatPercent(market.supplyAPY)}
+                {formatPercent(parseFloat(market.supplyAPY))}
               </span>
 
               {/* Total Borrow */}
@@ -60,7 +60,7 @@ function Markets() {
 
               {/* Borrow APY */}
               <span className="markets-value markets-value--red">
-                {formatPercent(market.borrowAPY)}
+                {formatPercent(parseFloat(market.borrowAPY))}
               </span>
 
               {/* LTV */}

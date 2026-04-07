@@ -78,9 +78,6 @@ function Dashboard() {
   const isLoading = accountLoading || balancesLoading || marketsLoading;
   const supplyAPY = calculateSupplyAPY();
   const borrowAPY = calculateBorrowAPY();
-  const netAPY = markets.length > 0
-    ? (markets.reduce((sum, m) => sum + parseFloat(m.supplyAPY), 0) / markets.length).toFixed(2)
-    : '0.00';
 
   return (
     <div>
