@@ -1,6 +1,6 @@
 import { useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
-import { CONTRACTS, DEBT_TOKENS, POOL_ABI, ERC20_ABI } from '../config/contracts';
+import { CONTRACTS, DEBT_TOKENS, POOL_ABI, ERC20_ABI, PRICE_ORACLE_ABI } from '../config/contracts';
 
 export interface MarketData {
   asset: string;
@@ -14,6 +14,7 @@ export interface MarketData {
   supplyAPY: string;
   borrowAPY: string;
   price: string;
+  priceRaw: bigint;
   ltv: string;
   liquidationThreshold: string;
   availableLiquidity: string;
@@ -51,16 +52,14 @@ const MARKET_CONFIG = [
   },
 ] as const;
 
-// Reserve data tuple from Pool.reserves():
-// [aTokenAddress, debtTokenAddress, liquidityIndex, currentLiquidityRate, ltv, liquidationThreshold, liquidationBonus, isActive]
+// Reserve data from Pool.reserves():
+// Matches Solidity struct: [aTokenAddress, variableDebtTokenAddress, liquidationThreshold, liquidationBonus, ltv, isActive]
 interface ReserveData {
   aTokenAddress: string;
-  debtTokenAddress: string;
-  liquidityIndex: bigint;
-  currentLiquidityRate: bigint;
-  ltv: bigint;
+  variableDebtTokenAddress: string;
   liquidationThreshold: bigint;
   liquidationBonus: bigint;
+  ltv: bigint;
   isActive: boolean;
 }
 
@@ -68,33 +67,41 @@ function parseReserveData(raw: readonly unknown[] | undefined): ReserveData | un
   if (!raw || raw.length < 6) return undefined;
   return {
     aTokenAddress: raw[0] as string,
-    debtTokenAddress: raw[1] as string,
-    liquidityIndex: raw[2] as bigint,
-    currentLiquidityRate: raw[3] as bigint,
+    variableDebtTokenAddress: raw[1] as string,
+    liquidationThreshold: raw[2] as bigint,
+    liquidationBonus: raw[3] as bigint,
     ltv: raw[4] as bigint,
-    liquidationThreshold: raw[5] as bigint,
-    liquidationBonus: raw[6] as bigint,
-    isActive: raw[7] as boolean,
+    isActive: raw[5] as boolean,
   };
 }
 
 export function useMarkets() {
   const contracts = MARKET_CONFIG.flatMap((market) => [
+    // Get reserve data from Pool
     {
       address: CONTRACTS.POOL,
       abi: POOL_ABI,
       functionName: 'reserves',
       args: [market.address],
     },
+    // Get total supply from aToken
     {
       address: market.aTokenAddress,
       abi: ERC20_ABI,
       functionName: 'totalSupply',
     },
+    // Get total borrow from debt token
     {
       address: market.debtTokenAddress,
       abi: ERC20_ABI,
       functionName: 'totalSupply',
+    },
+    // Get price from PriceOracle
+    {
+      address: CONTRACTS.PRICE_ORACLE,
+      abi: PRICE_ORACLE_ABI,
+      functionName: 'getAssetPrice',
+      args: [market.address],
     },
   ]);
 
@@ -106,14 +113,19 @@ export function useMarkets() {
   });
 
   const markets: MarketData[] = MARKET_CONFIG.map((market, index) => {
-    const baseIndex = index * 3;
+    const baseIndex = index * 4; // 4 calls per market now
     const rawReserve = data?.[baseIndex]?.result as readonly unknown[] | undefined;
     const reserveData = parseReserveData(rawReserve);
     const totalSupply = data?.[baseIndex + 1]?.result as bigint | undefined;
     const totalBorrow = data?.[baseIndex + 2]?.result as bigint | undefined;
+    const priceRaw = data?.[baseIndex + 3]?.result as bigint | undefined;
 
     const supply = totalSupply ?? 0n;
     const borrow = totalBorrow ?? 0n;
+    const price = priceRaw ?? 0n;
+
+    // Price is in 18 decimals from PriceOracle
+    const priceFormatted = formatUnits(price, 18);
 
     // Calculate utilization-based APY
     const utilization = supply > 0n ? Number((borrow * 10000n) / supply) / 100 : 0;
@@ -135,7 +147,8 @@ export function useMarkets() {
       totalBorrow: borrow,
       supplyAPY: supplyAPY.toFixed(2),
       borrowAPY: borrowAPY.toFixed(2),
-      price: '0', // fetched separately via PriceOracle if needed
+      price: priceFormatted,
+      priceRaw: price,
       ltv: (ltv / 100).toFixed(0),
       liquidationThreshold: (liquidationThreshold / 100).toFixed(0),
       availableLiquidity: supply > borrow ? formatUnits(supply - borrow, market.decimals) : '0',

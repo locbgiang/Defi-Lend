@@ -189,3 +189,21 @@ export const WETH_GATEWAY_ABI = [
     outputs: [],
   },
 ] as const;
+
+// PriceOracle ABI
+export const PRICE_ORACLE_ABI = [
+  {
+    name: 'getAssetPrice',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'asset', type: 'address' }],
+    outputs: [{ name: 'price', type: 'uint256' }],
+  },
+  {
+    name: 'hasPrice',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'asset', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+] as const;

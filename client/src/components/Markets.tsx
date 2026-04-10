@@ -20,6 +20,7 @@ function Markets() {
         {/* Table Header */}
         <div className="markets-table-header">
           <span>Asset</span>
+          <span>Price</span>
           <span>Total Supply</span>
           <span>Supply APY</span>
           <span>Total Borrow</span>
@@ -42,6 +43,11 @@ function Markets() {
                   <p className="markets-asset-name">{market.name}</p>
                 </div>
               </div>
+
+              {/* Price */}
+              <span className="markets-value">
+                ${parseFloat(market.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
 
               {/* Total Supply */}
               <span className="markets-value">

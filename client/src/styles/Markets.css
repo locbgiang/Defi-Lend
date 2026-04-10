@@ -18,7 +18,7 @@
 
 .markets-table-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 0.8fr 180px;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 0.8fr 180px;
   padding: 16px 24px;
   background-color: #f8f9fa;
   border-bottom: 1px solid #e0e0e0;
@@ -44,7 +44,7 @@
 
 .markets-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 0.8fr 180px;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 0.8fr 180px;
   padding: 20px 24px;
   border-bottom: 1px solid #f0f0f0;
   align-items: center;
