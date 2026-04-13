@@ -32,8 +32,8 @@ function Dashboard() {
     markets.forEach(market => {
       const supplied = parseFloat(balances[market.symbol]?.supplied || '0');
       if (supplied > 0) {
-        // For stablecoins, value = amount. For WETH, need price conversion
-        const value = market.symbol === 'WETH' ? supplied * 2450 : supplied;
+        const price = parseFloat(market.price) || 1;
+        const value = supplied * price;
         totalValue += value;
         weightedAPY += value * Number(market.supplyAPY);
       }
@@ -48,7 +48,8 @@ function Dashboard() {
     markets.forEach(market => {
       const borrowed = parseFloat(balances[market.symbol]?.borrowed || '0');
       if (borrowed > 0) {
-        const value = market.symbol === 'WETH' ? borrowed * 2450 : borrowed;
+        const price = parseFloat(market.price) || 1;
+        const value = borrowed * price;
         totalValue += value;
         weightedAPY += value * Number(market.borrowAPY);
       }
@@ -153,6 +154,7 @@ function Dashboard() {
               {markets.map((market) => {
                 const supplied = parseFloat(balances[market.symbol]?.supplied || '0');
                 if (supplied <= 0) return null;
+                const price = parseFloat(market.price) || 1;
                 return (
                   <div key={market.symbol} className="dashboard-position-row">
                     <div className="dashboard-position-asset">
@@ -165,9 +167,7 @@ function Dashboard() {
                     <div style={{ textAlign: 'right' }}>
                       <p className="dashboard-position-amount">{formatBalance(balances[market.symbol]?.supplied || '0')}</p>
                       <p className="dashboard-position-value">
-                        ${market.symbol === 'WETH' 
-                          ? (supplied * 2450).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                          : supplied.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${(supplied * price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
@@ -189,6 +189,7 @@ function Dashboard() {
               {markets.map((market) => {
                 const borrowed = parseFloat(balances[market.symbol]?.borrowed || '0');
                 if (borrowed <= 0) return null;
+                const price = parseFloat(market.price) || 1;
                 return (
                   <div key={market.symbol} className="dashboard-position-row">
                     <div className="dashboard-position-asset">
@@ -201,9 +202,7 @@ function Dashboard() {
                     <div style={{ textAlign: 'right' }}>
                       <p className="dashboard-position-amount">{formatBalance(balances[market.symbol]?.borrowed || '0')}</p>
                       <p className="dashboard-position-value">
-                        ${market.symbol === 'WETH' 
-                          ? (borrowed * 2450).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                          : borrowed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${(borrowed * price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>

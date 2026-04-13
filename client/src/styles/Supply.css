@@ -86,7 +86,8 @@
 }
 
 .supply-card--selected {
-  border-color: #1976d2;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .supply-card-header {
@@ -358,4 +359,20 @@
   height: 1px;
   background: #e5e7eb;
   margin: 4px 0;
+}
+
+.supply-btn--approve {
+  background: #7c3aed !important;
+}
+
+.supply-btn--approve:hover:not(:disabled) {
+  background: #6d28d9 !important;
+}
+
+.supply-btn--withdraw {
+  background: #f59e0b !important;
+}
+
+.supply-btn--withdraw:hover:not(:disabled) {
+  background: #d97706 !important;
 }
