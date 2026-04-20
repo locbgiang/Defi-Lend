@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { useLocation } from 'react-router-dom';
 import { formatUnits, parseUnits } from 'viem';
 import { useMarkets } from '../hooks/useMarkets';
 import { useUserAccountData, useUserBalances } from '../hooks/usePool';
 import { formatPercent } from '../utils/formatters';
+import { useToast } from '../context/ToastContext';
 import { CONTRACTS, POOL_ABI, ERC20_ABI } from '../config/contracts';
 import '../styles/Borrow.css';
 
@@ -36,6 +37,50 @@ function Borrow() {
     refetchBalances();
     refetchAccountData();
   }
+
+  const { addToast, updateToast } = useToast();
+  const borrowToastId = useRef<number | null>(null);
+  const approveToastId = useRef<number | null>(null);
+  const repayToastId = useRef<number | null>(null);
+
+  // Toast: Borrow
+  useEffect(() => {
+    if (borrowTxHash && borrowToastId.current === null) {
+      borrowToastId.current = addToast('pending', 'Borrowing...', 'Waiting for confirmation', borrowTxHash);
+    }
+  }, [borrowTxHash]);
+  useEffect(() => {
+    if (isBorrowSuccess && borrowToastId.current !== null) {
+      updateToast(borrowToastId.current, { type: 'success', title: 'Borrow Successful', message: 'Assets borrowed!' });
+      borrowToastId.current = null;
+    }
+  }, [isBorrowSuccess]);
+
+  // Toast: Approve for Repay
+  useEffect(() => {
+    if (approveTxHash && approveToastId.current === null) {
+      approveToastId.current = addToast('pending', 'Approving token...', 'Waiting for confirmation', approveTxHash);
+    }
+  }, [approveTxHash]);
+  useEffect(() => {
+    if (isApproveSuccess && approveToastId.current !== null) {
+      updateToast(approveToastId.current, { type: 'success', title: 'Token Approved', message: 'You can now repay' });
+      approveToastId.current = null;
+    }
+  }, [isApproveSuccess]);
+
+  // Toast: Repay
+  useEffect(() => {
+    if (repayTxHash && repayToastId.current === null) {
+      repayToastId.current = addToast('pending', 'Repaying...', 'Waiting for confirmation', repayTxHash);
+    }
+  }, [repayTxHash]);
+  useEffect(() => {
+    if (isRepaySuccess && repayToastId.current !== null) {
+      updateToast(repayToastId.current, { type: 'success', title: 'Repay Successful', message: 'Debt repaid!' });
+      repayToastId.current = null;
+    }
+  }, [isRepaySuccess]);
 
   // Format user account data from blockchain (values are in 18 decimals base currency)
   const totalCollateral = accountData ? Number(formatUnits(accountData.totalCollateralBase, 18)) : 0;

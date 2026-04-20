@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
 import { useLocation } from 'react-router-dom';
 import { parseUnits } from 'viem';
 import { useMarkets } from '../hooks/useMarkets';
 import { useUserBalances } from '../hooks/usePool';
+import { useToast } from '../context/ToastContext';
 import { CONTRACTS, POOL_ABI, ERC20_ABI, WETH_GATEWAY_ABI } from '../config/contracts';
 import '../styles/Supply.css';
 
@@ -43,6 +44,78 @@ function Supply() {
   // Track which tokens are approved
   const [approvedTokens, setApprovedTokens] = useState<Record<string, boolean>>({});
   const [aWethApproved, setAWethApproved] = useState(false);
+
+  const { addToast, updateToast } = useToast();
+  const approveToastId = useRef<number | null>(null);
+  const supplyToastId = useRef<number | null>(null);
+  const depositETHToastId = useRef<number | null>(null);
+  const withdrawToastId = useRef<number | null>(null);
+  const aWethApproveToastId = useRef<number | null>(null);
+
+  // Toast: Approve
+  useEffect(() => {
+    if (approveTxHash && approveToastId.current === null) {
+      approveToastId.current = addToast('pending', 'Approving token...', 'Waiting for confirmation', approveTxHash);
+    }
+  }, [approveTxHash]);
+  useEffect(() => {
+    if (isApproveSuccess && approveToastId.current !== null) {
+      updateToast(approveToastId.current, { type: 'success', title: 'Token Approved', message: 'You can now supply' });
+      approveToastId.current = null;
+    }
+  }, [isApproveSuccess]);
+
+  // Toast: Supply
+  useEffect(() => {
+    if (supplyTxHash && supplyToastId.current === null) {
+      supplyToastId.current = addToast('pending', 'Supplying...', 'Waiting for confirmation', supplyTxHash);
+    }
+  }, [supplyTxHash]);
+  useEffect(() => {
+    if (isSupplySuccess && supplyToastId.current !== null) {
+      updateToast(supplyToastId.current, { type: 'success', title: 'Supply Successful', message: 'Assets supplied!' });
+      supplyToastId.current = null;
+    }
+  }, [isSupplySuccess]);
+
+  // Toast: Deposit ETH
+  useEffect(() => {
+    if (depositETHTxHash && depositETHToastId.current === null) {
+      depositETHToastId.current = addToast('pending', 'Depositing ETH...', 'Waiting for confirmation', depositETHTxHash);
+    }
+  }, [depositETHTxHash]);
+  useEffect(() => {
+    if (isDepositETHSuccess && depositETHToastId.current !== null) {
+      updateToast(depositETHToastId.current, { type: 'success', title: 'ETH Deposited', message: 'ETH supplied successfully!' });
+      depositETHToastId.current = null;
+    }
+  }, [isDepositETHSuccess]);
+
+  // Toast: Withdraw
+  useEffect(() => {
+    if (withdrawTxHash && withdrawToastId.current === null) {
+      withdrawToastId.current = addToast('pending', 'Withdrawing...', 'Waiting for confirmation', withdrawTxHash);
+    }
+  }, [withdrawTxHash]);
+  useEffect(() => {
+    if (isWithdrawSuccess && withdrawToastId.current !== null) {
+      updateToast(withdrawToastId.current, { type: 'success', title: 'Withdrawal Successful', message: 'Assets withdrawn!' });
+      withdrawToastId.current = null;
+    }
+  }, [isWithdrawSuccess]);
+
+  // Toast: aWETH Approve
+  useEffect(() => {
+    if (aWethApproveTxHash && aWethApproveToastId.current === null) {
+      aWethApproveToastId.current = addToast('pending', 'Approving aWETH...', 'Waiting for confirmation', aWethApproveTxHash);
+    }
+  }, [aWethApproveTxHash]);
+  useEffect(() => {
+    if (isAWethApproveSuccess && aWethApproveToastId.current !== null) {
+      updateToast(aWethApproveToastId.current, { type: 'success', title: 'aWETH Approved', message: 'You can now withdraw ETH' });
+      aWethApproveToastId.current = null;
+    }
+  }, [isAWethApproveSuccess]);
 
   // Refetch balances after successful transactions
   if (isSupplySuccess || isDepositETHSuccess || isWithdrawSuccess) {
