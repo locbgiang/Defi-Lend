@@ -22,24 +22,24 @@ function Supply() {
   const [withdrawEthAmount, setWithdrawEthAmount] = useState('');
 
   // Approve contract hook
-  const { writeContract: writeApprove, data: approveTxHash, isPending: isApprovePending } = useWriteContract();
-  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveTxHash });
+  const { writeContract: writeApprove, data: approveTxHash, isPending: isApprovePending, error: approveWriteError } = useWriteContract();
+  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess, isError: isApproveError, error: approveTxError } = useWaitForTransactionReceipt({ hash: approveTxHash });
 
   // Supply contract hook
-  const { writeContract: writeSupply, data: supplyTxHash, isPending: isSupplyPending } = useWriteContract();
-  const { isLoading: isSupplyConfirming, isSuccess: isSupplySuccess } = useWaitForTransactionReceipt({ hash: supplyTxHash });
+  const { writeContract: writeSupply, data: supplyTxHash, isPending: isSupplyPending, error: supplyWriteError } = useWriteContract();
+  const { isLoading: isSupplyConfirming, isSuccess: isSupplySuccess, isError: isSupplyError, error: supplyTxError } = useWaitForTransactionReceipt({ hash: supplyTxHash });
 
   // Deposit ETH contract hook
-  const { writeContract: writeDepositETH, data: depositETHTxHash, isPending: isDepositETHPending } = useWriteContract();
-  const { isLoading: isDepositETHConfirming, isSuccess: isDepositETHSuccess } = useWaitForTransactionReceipt({ hash: depositETHTxHash });
+  const { writeContract: writeDepositETH, data: depositETHTxHash, isPending: isDepositETHPending, error: depositETHWriteError } = useWriteContract();
+  const { isLoading: isDepositETHConfirming, isSuccess: isDepositETHSuccess, isError: isDepositETHError, error: depositETHTxError } = useWaitForTransactionReceipt({ hash: depositETHTxHash });
 
   // Withdraw contract hook
-  const { writeContract: writeWithdraw, data: withdrawTxHash, isPending: isWithdrawPending } = useWriteContract();
-  const { isLoading: isWithdrawConfirming, isSuccess: isWithdrawSuccess } = useWaitForTransactionReceipt({ hash: withdrawTxHash });
+  const { writeContract: writeWithdraw, data: withdrawTxHash, isPending: isWithdrawPending, error: withdrawWriteError } = useWriteContract();
+  const { isLoading: isWithdrawConfirming, isSuccess: isWithdrawSuccess, isError: isWithdrawError, error: withdrawTxError } = useWaitForTransactionReceipt({ hash: withdrawTxHash });
 
   // aWETH approve for WETHGateway withdraw
-  const { writeContract: writeAWethApprove, data: aWethApproveTxHash, isPending: isAWethApprovePending } = useWriteContract();
-  const { isLoading: isAWethApproveConfirming, isSuccess: isAWethApproveSuccess } = useWaitForTransactionReceipt({ hash: aWethApproveTxHash });
+  const { writeContract: writeAWethApprove, data: aWethApproveTxHash, isPending: isAWethApprovePending, error: aWethApproveWriteError } = useWriteContract();
+  const { isLoading: isAWethApproveConfirming, isSuccess: isAWethApproveSuccess, isError: isAWethApproveError, error: aWethApproveTxError } = useWaitForTransactionReceipt({ hash: aWethApproveTxHash });
 
   // Track which tokens are approved
   const [approvedTokens, setApprovedTokens] = useState<Record<string, boolean>>({});
@@ -116,6 +116,88 @@ function Supply() {
       aWethApproveToastId.current = null;
     }
   }, [isAWethApproveSuccess]);
+
+  // Helper: extract a short, readable message from wagmi/viem errors
+  const parseError = (err: Error | null): string => {
+    if (!err) return 'Transaction failed';
+    const msg = err.message;
+    if (msg.includes('User rejected') || msg.includes('user rejected')) return 'Transaction rejected';
+    if (msg.includes('insufficient funds')) return 'Insufficient funds for gas';
+    const revertMatch = msg.match(/reverted with reason string '(.+?)'/);
+    if (revertMatch) return revertMatch[1];
+    const customMatch = msg.match(/reverted.*?:(.*)/i);
+    if (customMatch) return customMatch[1].trim().slice(0, 80);
+    return msg.slice(0, 80);
+  };
+
+  // Error toasts: wallet-side rejections
+  useEffect(() => {
+    if (approveWriteError) addToast('error', 'Approval Failed', parseError(approveWriteError));
+  }, [approveWriteError]);
+  useEffect(() => {
+    if (supplyWriteError) addToast('error', 'Supply Failed', parseError(supplyWriteError));
+  }, [supplyWriteError]);
+  useEffect(() => {
+    if (depositETHWriteError) addToast('error', 'Deposit Failed', parseError(depositETHWriteError));
+  }, [depositETHWriteError]);
+  useEffect(() => {
+    if (withdrawWriteError) addToast('error', 'Withdraw Failed', parseError(withdrawWriteError));
+  }, [withdrawWriteError]);
+  useEffect(() => {
+    if (aWethApproveWriteError) addToast('error', 'Approval Failed', parseError(aWethApproveWriteError));
+  }, [aWethApproveWriteError]);
+
+  // Error toasts: on-chain reverts
+  useEffect(() => {
+    if (isApproveError) {
+      if (approveToastId.current !== null) {
+        updateToast(approveToastId.current, { type: 'error', title: 'Approval Reverted', message: parseError(approveTxError) });
+        approveToastId.current = null;
+      } else {
+        addToast('error', 'Approval Reverted', parseError(approveTxError));
+      }
+    }
+  }, [isApproveError]);
+  useEffect(() => {
+    if (isSupplyError) {
+      if (supplyToastId.current !== null) {
+        updateToast(supplyToastId.current, { type: 'error', title: 'Supply Reverted', message: parseError(supplyTxError) });
+        supplyToastId.current = null;
+      } else {
+        addToast('error', 'Supply Reverted', parseError(supplyTxError));
+      }
+    }
+  }, [isSupplyError]);
+  useEffect(() => {
+    if (isDepositETHError) {
+      if (depositETHToastId.current !== null) {
+        updateToast(depositETHToastId.current, { type: 'error', title: 'Deposit Reverted', message: parseError(depositETHTxError) });
+        depositETHToastId.current = null;
+      } else {
+        addToast('error', 'Deposit Reverted', parseError(depositETHTxError));
+      }
+    }
+  }, [isDepositETHError]);
+  useEffect(() => {
+    if (isWithdrawError) {
+      if (withdrawToastId.current !== null) {
+        updateToast(withdrawToastId.current, { type: 'error', title: 'Withdraw Reverted', message: parseError(withdrawTxError) });
+        withdrawToastId.current = null;
+      } else {
+        addToast('error', 'Withdraw Reverted', parseError(withdrawTxError));
+      }
+    }
+  }, [isWithdrawError]);
+  useEffect(() => {
+    if (isAWethApproveError) {
+      if (aWethApproveToastId.current !== null) {
+        updateToast(aWethApproveToastId.current, { type: 'error', title: 'Approval Reverted', message: parseError(aWethApproveTxError) });
+        aWethApproveToastId.current = null;
+      } else {
+        addToast('error', 'Approval Reverted', parseError(aWethApproveTxError));
+      }
+    }
+  }, [isAWethApproveError]);
 
   // Refetch balances after successful transactions
   if (isSupplySuccess || isDepositETHSuccess || isWithdrawSuccess) {

@@ -22,15 +22,15 @@ function Borrow() {
   const { balances, isLoading: balancesLoading, refetch: refetchBalances } = useUserBalances(address);
 
   // Borrow contract hooks
-  const { writeContract: writeBorrow, data: borrowTxHash, isPending: isBorrowPending } = useWriteContract();
-  const { isLoading: isBorrowConfirming, isSuccess: isBorrowSuccess } = useWaitForTransactionReceipt({ hash: borrowTxHash });
+  const { writeContract: writeBorrow, data: borrowTxHash, isPending: isBorrowPending, error: borrowWriteError } = useWriteContract();
+  const { isLoading: isBorrowConfirming, isSuccess: isBorrowSuccess, isError: isBorrowError, error: borrowTxError } = useWaitForTransactionReceipt({ hash: borrowTxHash });
 
   // Repay contract hooks
-  const { writeContract: writeApprove, data: approveTxHash, isPending: isApprovePending } = useWriteContract();
-  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveTxHash });
+  const { writeContract: writeApprove, data: approveTxHash, isPending: isApprovePending, error: approveWriteError } = useWriteContract();
+  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess, isError: isApproveError, error: approveTxError } = useWaitForTransactionReceipt({ hash: approveTxHash });
 
-  const { writeContract: writeRepay, data: repayTxHash, isPending: isRepayPending } = useWriteContract();
-  const { isLoading: isRepayConfirming, isSuccess: isRepaySuccess } = useWaitForTransactionReceipt({ hash: repayTxHash });
+  const { writeContract: writeRepay, data: repayTxHash, isPending: isRepayPending, error: repayWriteError } = useWriteContract();
+  const { isLoading: isRepayConfirming, isSuccess: isRepaySuccess, isError: isRepayError, error: repayTxError } = useWaitForTransactionReceipt({ hash: repayTxHash });
 
   // Refetch after successful transactions
   if (isBorrowSuccess || isRepaySuccess) {
@@ -81,6 +81,62 @@ function Borrow() {
       repayToastId.current = null;
     }
   }, [isRepaySuccess]);
+
+  // Helper: extract a short, readable message from wagmi/viem errors
+  const parseError = (err: Error | null): string => {
+    if (!err) return 'Transaction failed';
+    const msg = err.message;
+    if (msg.includes('User rejected') || msg.includes('user rejected')) return 'Transaction rejected';
+    if (msg.includes('insufficient funds')) return 'Insufficient funds for gas';
+    const revertMatch = msg.match(/reverted with reason string '(.+?)'/);
+    if (revertMatch) return revertMatch[1];
+    const customMatch = msg.match(/reverted.*?:(.*)/i);
+    if (customMatch) return customMatch[1].trim().slice(0, 80);
+    return msg.slice(0, 80);
+  };
+
+  // Error toasts: wallet-side rejections
+  useEffect(() => {
+    if (borrowWriteError) addToast('error', 'Borrow Failed', parseError(borrowWriteError));
+  }, [borrowWriteError]);
+  useEffect(() => {
+    if (approveWriteError) addToast('error', 'Approval Failed', parseError(approveWriteError));
+  }, [approveWriteError]);
+  useEffect(() => {
+    if (repayWriteError) addToast('error', 'Repay Failed', parseError(repayWriteError));
+  }, [repayWriteError]);
+
+  // Error toasts: on-chain reverts
+  useEffect(() => {
+    if (isBorrowError) {
+      if (borrowToastId.current !== null) {
+        updateToast(borrowToastId.current, { type: 'error', title: 'Borrow Reverted', message: parseError(borrowTxError) });
+        borrowToastId.current = null;
+      } else {
+        addToast('error', 'Borrow Reverted', parseError(borrowTxError));
+      }
+    }
+  }, [isBorrowError]);
+  useEffect(() => {
+    if (isApproveError) {
+      if (approveToastId.current !== null) {
+        updateToast(approveToastId.current, { type: 'error', title: 'Approval Reverted', message: parseError(approveTxError) });
+        approveToastId.current = null;
+      } else {
+        addToast('error', 'Approval Reverted', parseError(approveTxError));
+      }
+    }
+  }, [isApproveError]);
+  useEffect(() => {
+    if (isRepayError) {
+      if (repayToastId.current !== null) {
+        updateToast(repayToastId.current, { type: 'error', title: 'Repay Reverted', message: parseError(repayTxError) });
+        repayToastId.current = null;
+      } else {
+        addToast('error', 'Repay Reverted', parseError(repayTxError));
+      }
+    }
+  }, [isRepayError]);
 
   // Format user account data from blockchain (values are in 18 decimals base currency)
   const totalCollateral = accountData ? Number(formatUnits(accountData.totalCollateralBase, 18)) : 0;
