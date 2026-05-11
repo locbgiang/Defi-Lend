@@ -357,6 +357,11 @@ function Supply() {
     setAWethApproved(false);
   };
 
+  const Spinner = () => <span className="supply-spinner" />;
+
+  const btnClass = (base: string, isLoading: boolean) =>
+    `${base}${isLoading ? ' supply-btn--loading' : ''}`;
+
   const formatBalance = (value: string, decimals: number = 4) => {
     const num = parseFloat(value);
     if (isNaN(num)) return '0.00';
@@ -441,8 +446,9 @@ function Supply() {
                 <button
                   onClick={handleDepositETH}
                   disabled={!ethAmount || parseFloat(ethAmount) <= 0 || isDepositETHPending || isDepositETHConfirming}
-                  className="supply-btn"
+                  className={btnClass('supply-btn', isDepositETHPending || isDepositETHConfirming)}
                 >
+                  {(isDepositETHPending || isDepositETHConfirming) && <Spinner />}
                   {isDepositETHPending ? 'Confirm in Wallet...' : isDepositETHConfirming ? 'Depositing...' : 'Deposit ETH'}
                 </button>
 
@@ -498,16 +504,18 @@ function Supply() {
                     <button
                       onClick={() => handleSupply(market)}
                       disabled={!amounts[market.symbol] || parseFloat(amounts[market.symbol]) <= 0 || isSupplyPending || isSupplyConfirming}
-                      className="supply-btn"
+                      className={btnClass('supply-btn', isSupplyPending || isSupplyConfirming)}
                     >
+                      {(isSupplyPending || isSupplyConfirming) && <Spinner />}
                       {isSupplyPending ? 'Confirm in Wallet...' : isSupplyConfirming ? 'Supplying...' : `Supply ${market.symbol}`}
                     </button>
                   ) : (
                     <button
                       onClick={() => handleApprove(market)}
                       disabled={!amounts[market.symbol] || parseFloat(amounts[market.symbol]) <= 0 || isApprovePending || isApproveConfirming}
-                      className="supply-btn supply-btn--approve"
+                      className={btnClass('supply-btn supply-btn--approve', isApprovePending || isApproveConfirming)}
                     >
+                      {(isApprovePending || isApproveConfirming) && <Spinner />}
                       {isApprovePending ? 'Confirm in Wallet...' : isApproveConfirming ? 'Approving...' : `Approve ${market.symbol}`}
                     </button>
                   )}
@@ -570,16 +578,18 @@ function Supply() {
                       <button
                         onClick={handleWithdrawETH}
                         disabled={!withdrawEthAmount || parseFloat(withdrawEthAmount) <= 0 || parseFloat(withdrawEthAmount) > parseFloat(balances['WETH']?.supplied || '0') || isWithdrawPending || isWithdrawConfirming}
-                        className="supply-btn supply-btn--withdraw"
+                        className={btnClass('supply-btn supply-btn--withdraw', isWithdrawPending || isWithdrawConfirming)}
                       >
+                        {(isWithdrawPending || isWithdrawConfirming) && <Spinner />}
                         {isWithdrawPending ? 'Confirm in Wallet...' : isWithdrawConfirming ? 'Withdrawing...' : 'Withdraw ETH'}
                       </button>
                     ) : (
                       <button
                         onClick={handleApproveAWeth}
                         disabled={!withdrawEthAmount || parseFloat(withdrawEthAmount) <= 0 || isAWethApprovePending || isAWethApproveConfirming}
-                        className="supply-btn supply-btn--approve"
+                        className={btnClass('supply-btn supply-btn--approve', isAWethApprovePending || isAWethApproveConfirming)}
                       >
+                        {(isAWethApprovePending || isAWethApproveConfirming) && <Spinner />}
                         {isAWethApprovePending ? 'Confirm in Wallet...' : isAWethApproveConfirming ? 'Approving...' : 'Approve Withdrawal'}
                       </button>
                     )}
@@ -639,8 +649,9 @@ function Supply() {
                       <button
                         onClick={() => handleWithdrawERC20(market)}
                         disabled={!withdrawAmounts[market.symbol] || parseFloat(withdrawAmounts[market.symbol]) <= 0 || parseFloat(withdrawAmounts[market.symbol]) > parseFloat(supplied) || isWithdrawPending || isWithdrawConfirming}
-                        className="supply-btn supply-btn--withdraw"
+                        className={btnClass('supply-btn supply-btn--withdraw', isWithdrawPending || isWithdrawConfirming)}
                       >
+                        {(isWithdrawPending || isWithdrawConfirming) && <Spinner />}
                         {isWithdrawPending ? 'Confirm in Wallet...' : isWithdrawConfirming ? 'Withdrawing...' : `Withdraw ${market.symbol}`}
                       </button>
                     </div>

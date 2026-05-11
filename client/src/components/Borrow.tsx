@@ -233,6 +233,11 @@ function Borrow() {
     });
   };
 
+  const Spinner = () => <span className="borrow-spinner" />;
+
+  const btnClass = (base: string, isLoading: boolean) =>
+    `${base}${isLoading ? ' borrow-btn--loading' : ''}`;
+
   const formatBalance = (value: string, decimals: number = 2) => {
     const num = parseFloat(value);
     if (isNaN(num)) return '0.00';
@@ -413,8 +418,9 @@ function Borrow() {
                       isBorrowPending ||
                       isBorrowConfirming
                     }
-                    className="borrow-btn"
+                    className={btnClass('borrow-btn', isBorrowPending || isBorrowConfirming)}
                   >
+                    {(isBorrowPending || isBorrowConfirming) && <Spinner />}
                     {availableToBorrow <= 0
                       ? 'No Collateral'
                       : exceedsLimit
@@ -494,8 +500,9 @@ function Borrow() {
                             isRepayPending ||
                             isRepayConfirming
                           }
-                          className="borrow-btn borrow-btn--repay"
+                          className={btnClass('borrow-btn borrow-btn--repay', isRepayPending || isRepayConfirming)}
                         >
+                          {(isRepayPending || isRepayConfirming) && <Spinner />}
                           {isRepayPending ? 'Confirm in Wallet...' : isRepayConfirming ? 'Repaying...' : `Repay ${market.symbol}`}
                         </button>
                       ) : (
@@ -507,8 +514,9 @@ function Borrow() {
                             isApprovePending ||
                             isApproveConfirming
                           }
-                          className="borrow-btn borrow-btn--approve"
+                          className={btnClass('borrow-btn borrow-btn--approve', isApprovePending || isApproveConfirming)}
                         >
+                          {(isApprovePending || isApproveConfirming) && <Spinner />}
                           {isApprovePending ? 'Confirm in Wallet...' : isApproveConfirming ? 'Approving...' : `Approve ${market.symbol}`}
                         </button>
                       )}
