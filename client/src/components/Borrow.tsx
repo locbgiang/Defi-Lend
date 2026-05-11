@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import { useLocation } from 'react-router-dom';
 import { formatUnits, parseUnits } from 'viem';
 import { useMarkets } from '../hooks/useMarkets';
@@ -16,10 +16,41 @@ function Borrow() {
 
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [repayAmounts, setRepayAmounts] = useState<Record<string, string>>({});
+  // Per-token approval state: tracks whether the current repay amount is approved
+  const [approvedTokens, setApprovedTokens] = useState<Record<string, boolean>>({});
 
   const { markets, isLoading: marketsLoading } = useMarkets();
   const { data: accountData, isLoading: accountLoading, refetch: refetchAccountData } = useUserAccountData(address);
   const { balances, isLoading: balancesLoading, refetch: refetchBalances } = useUserBalances(address);
+
+  // Read on-chain allowances for all market tokens (owner=user, spender=Pool)
+  const allowanceContracts = markets.map((market) => ({
+    address: market.address as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: 'allowance' as const,
+    args: [address as `0x${string}`, CONTRACTS.POOL as `0x${string}`],
+  }));
+  const { data: allowancesData, refetch: refetchAllowances } = useReadContracts({
+    contracts: allowanceContracts,
+    query: { enabled: !!address && markets.length > 0 },
+  });
+
+  // Sync on-chain allowances → approvedTokens whenever allowance data or repay amounts change
+  useEffect(() => {
+    if (!allowancesData || markets.length === 0) return;
+    const updated: Record<string, boolean> = {};
+    markets.forEach((market, i) => {
+      const raw = allowancesData[i]?.result as bigint | undefined;
+      const repayAmt = repayAmounts[market.symbol];
+      if (raw !== undefined && repayAmt && parseFloat(repayAmt) > 0) {
+        const needed = parseUnits(repayAmt, Number(market.decimals));
+        updated[market.symbol] = raw >= needed;
+      } else {
+        updated[market.symbol] = false;
+      }
+    });
+    setApprovedTokens(updated);
+  }, [allowancesData, repayAmounts, markets]);
 
   // Borrow contract hooks
   const { writeContract: writeBorrow, data: borrowTxHash, isPending: isBorrowPending, error: borrowWriteError } = useWriteContract();
@@ -37,7 +68,6 @@ function Borrow() {
     refetchBalances();
     refetchAccountData();
   }
-
   const { addToast, updateToast } = useToast();
   const borrowToastId = useRef<number | null>(null);
   const approveToastId = useRef<number | null>(null);
@@ -66,6 +96,7 @@ function Borrow() {
     if (isApproveSuccess && approveToastId.current !== null) {
       updateToast(approveToastId.current, { type: 'success', title: 'Token Approved', message: 'You can now repay' });
       approveToastId.current = null;
+      refetchAllowances();
     }
   }, [isApproveSuccess]);
 
@@ -79,6 +110,7 @@ function Borrow() {
     if (isRepaySuccess && repayToastId.current !== null) {
       updateToast(repayToastId.current, { type: 'success', title: 'Repay Successful', message: 'Debt repaid!' });
       repayToastId.current = null;
+      refetchAllowances();
     }
   }, [isRepaySuccess]);
 
@@ -491,7 +523,7 @@ function Borrow() {
                         </div>
                       </div>
 
-                      {isApproveSuccess ? (
+                      {approvedTokens[market.symbol] ? (
                         <button
                           onClick={() => handleRepay(market)}
                           disabled={
