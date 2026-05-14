@@ -411,3 +411,36 @@
 .supply-btn--withdraw:hover:not(:disabled) {
   background: #d97706 !important;
 }
+
+/* ===== Mobile Responsiveness ===== */
+@media (max-width: 768px) {
+  .supply-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .supply-positions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .supply-title {
+    font-size: 22px;
+  }
+
+  .supply-section {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .supply-card {
+    padding: 16px;
+  }
+
+  .supply-asset-symbol {
+    font-size: 16px;
+  }
+
+  .supply-apy-value {
+    font-size: 16px;
+  }
+}

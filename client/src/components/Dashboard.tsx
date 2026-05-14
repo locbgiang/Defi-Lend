@@ -1,11 +1,13 @@
 import { useAccount, useBalance } from 'wagmi';
 import { formatUnits } from 'viem';
+import { useNavigate } from 'react-router-dom';
 import { useUserAccountData, useUserBalances } from '../hooks/usePool';
 import { useMarkets } from '../hooks/useMarkets';
 import '../styles/Dashboard.css';
 
 function Dashboard() {
   const { address, isConnected, chain } = useAccount();
+  const navigate = useNavigate();
   const { data: balance } = useBalance({ address });
   const { data: accountData, isLoading: accountLoading } = useUserAccountData(address);
   const { balances, isLoading: balancesLoading } = useUserBalances(address);
@@ -175,7 +177,12 @@ function Dashboard() {
               })}
             </div>
           ) : (
-            <p className="dashboard-empty-state">Nothing supplied yet</p>
+            <div className="dashboard-empty-state">
+              <p className="dashboard-empty-state-text">Nothing supplied yet</p>
+              <button className="dashboard-empty-state-btn" onClick={() => navigate('/supply')}>
+                Supply Assets →
+              </button>
+            </div>
           )}
         </div>
 
@@ -210,7 +217,12 @@ function Dashboard() {
               })}
             </div>
           ) : (
-            <p className="dashboard-empty-state">Nothing borrowed yet</p>
+            <div className="dashboard-empty-state">
+              <p className="dashboard-empty-state-text">Nothing borrowed yet</p>
+              <button className="dashboard-empty-state-btn dashboard-empty-state-btn--borrow" onClick={() => navigate('/borrow')}>
+                Borrow Assets →
+              </button>
+            </div>
           )}
         </div>
       </div>

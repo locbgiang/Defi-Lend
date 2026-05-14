@@ -1,0 +1,434 @@
+/* Connect prompt */
+.liquidation-connect-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.liquidation-connect-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.liquidation-connect-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 12px;
+}
+
+.liquidation-connect-text {
+  color: #666;
+  max-width: 400px;
+}
+
+/* Page header */
+.liquidation-title {
+  font-size: 28px;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.liquidation-subtitle {
+  color: #666;
+  margin-bottom: 32px;
+}
+
+/* Warning banner */
+.liquidation-warning {
+  background: #fff8e1;
+  border: 1px solid #f59e0b;
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.liquidation-warning-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.liquidation-warning-text {
+  color: #92400e;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Lookup card */
+.liquidation-lookup-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 32px;
+}
+
+.liquidation-lookup-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 16px;
+}
+
+.liquidation-lookup-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.liquidation-lookup-input-group {
+  flex: 1;
+}
+
+.liquidation-lookup-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.liquidation-lookup-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: monospace;
+  color: #1a1a2e;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.liquidation-lookup-input:focus {
+  outline: none;
+  border-color: #d32f2f;
+}
+
+.liquidation-lookup-btn {
+  padding: 12px 24px;
+  background: #d32f2f;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+  height: 44px;
+}
+
+.liquidation-lookup-btn:hover:not(:disabled) {
+  background: #b71c1c;
+}
+
+.liquidation-lookup-btn:disabled {
+  background: #e0e0e0;
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* Position info card */
+.liquidation-position-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 32px;
+  border-left: 4px solid #d32f2f;
+}
+
+.liquidation-position-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.liquidation-position-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.liquidation-hf-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.liquidation-hf-badge--danger {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.liquidation-hf-badge--safe {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.liquidation-position-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.liquidation-position-stat {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.liquidation-position-stat-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.liquidation-position-stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.liquidation-position-stat-value--red {
+  color: #c62828;
+}
+
+.liquidation-safe-msg {
+  text-align: center;
+  padding: 20px;
+  color: #2e7d32;
+  font-weight: 500;
+  background: #e8f5e9;
+  border-radius: 8px;
+}
+
+/* Execute card */
+.liquidation-execute-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.liquidation-execute-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 20px;
+}
+
+.liquidation-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.liquidation-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.liquidation-field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+
+.liquidation-select {
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1a1a2e;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.liquidation-select:focus {
+  outline: none;
+  border-color: #d32f2f;
+}
+
+.liquidation-input-wrapper {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.liquidation-input-wrapper:focus-within {
+  border-color: #d32f2f;
+}
+
+.liquidation-amount-input {
+  flex: 1;
+  padding: 12px 14px;
+  border: none;
+  font-size: 14px;
+  color: #1a1a2e;
+  outline: none;
+}
+
+.liquidation-max-btn {
+  padding: 8px 12px;
+  background: #f0f0f0;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.liquidation-max-btn:hover {
+  background: #e0e0e0;
+}
+
+/* Preview box */
+.liquidation-preview {
+  background: #fff8e1;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.liquidation-preview-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 10px;
+}
+
+.liquidation-preview-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #78350f;
+  margin-bottom: 6px;
+}
+
+.liquidation-preview-row:last-child {
+  margin-bottom: 0;
+  font-weight: 600;
+  color: #92400e;
+}
+
+/* Receive toggle */
+.liquidation-receive-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.liquidation-receive-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #d32f2f;
+}
+
+.liquidation-receive-toggle label {
+  font-size: 14px;
+  color: #444;
+  cursor: pointer;
+}
+
+/* Approve + Execute buttons */
+.liquidation-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.liquidation-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.liquidation-btn--approve {
+  background: #f59e0b;
+  color: white;
+}
+
+.liquidation-btn--approve:hover:not(:disabled) {
+  background: #d97706;
+}
+
+.liquidation-btn--execute {
+  background: #d32f2f;
+  color: white;
+}
+
+.liquidation-btn--execute:hover:not(:disabled) {
+  background: #b71c1c;
+}
+
+.liquidation-btn:disabled {
+  background: #e0e0e0;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.liquidation-btn--loading {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.liquidation-btn--loading:hover {
+  background: #d32f2f !important;
+}
+
+.liquidation-btn--approve.liquidation-btn--loading:hover {
+  background: #f59e0b !important;
+}
+
+@keyframes liquidation-spin {
+  to { transform: rotate(360deg); }
+}
+
+.liquidation-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: liquidation-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.liquidation-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #888;
+  font-size: 15px;
+}

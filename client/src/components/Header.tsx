@@ -17,6 +17,7 @@ function Header() {
         <NavLink to="/markets" className={({ isActive }) => `header-nav-link ${isActive ? 'header-nav-link--active' : ''}`}>Markets</NavLink>
         <NavLink to="/supply" className={({ isActive }) => `header-nav-link ${isActive ? 'header-nav-link--active' : ''}`}>Supply</NavLink>
         <NavLink to="/borrow" className={({ isActive }) => `header-nav-link ${isActive ? 'header-nav-link--active' : ''}`}>Borrow</NavLink>
+        <NavLink to="/liquidation" className={({ isActive }) => `header-nav-link header-nav-link--liquidation ${isActive ? 'header-nav-link--active' : ''}`}>⚡ Liquidate</NavLink>
       </nav>
 
       {/* Wallet Connect Button */}

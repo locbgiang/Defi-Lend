@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard';
 import Markets from './components/Markets';
 import Supply from './components/Supply';
 import Borrow from './components/Borrow';
+import Liquidation from './components/Liquidation';
 import ToastContainer from './components/ToastContainer';
 import './styles/App.css';
 
@@ -29,6 +30,7 @@ function App() {
                   <Route path='/markets' element={<Markets />} />
                   <Route path='/supply' element={<Supply />} />
                   <Route path='/borrow' element={<Borrow />} />
+                  <Route path='/liquidation' element={<Liquidation />} />
                 </Routes>
               </main>
             </div>

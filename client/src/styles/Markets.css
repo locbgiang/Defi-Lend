@@ -177,3 +177,52 @@
 .markets-info-card-text--orange {
   color: #f57c00;
 }
+
+/* ===== Mobile Responsiveness ===== */
+
+/* Tablet: collapse to scrollable table */
+@media (max-width: 900px) {
+  .markets-table {
+    overflow-x: auto;
+  }
+
+  .markets-table-header,
+  .markets-row {
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 0.8fr 160px;
+    min-width: 700px;
+  }
+}
+
+/* Mobile: card-based layout */
+@media (max-width: 600px) {
+  .markets-table-header {
+    display: none;
+  }
+
+  .markets-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    min-width: unset;
+  }
+
+  .markets-asset {
+    margin-bottom: 4px;
+  }
+
+  .markets-value {
+    text-align: left;
+    font-size: 14px;
+  }
+
+  .markets-actions {
+    justify-content: flex-start;
+    margin-top: 4px;
+  }
+
+  .markets-info-cards {
+    grid-template-columns: 1fr;
+  }
+}

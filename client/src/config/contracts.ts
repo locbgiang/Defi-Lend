@@ -111,6 +111,19 @@ export const POOL_ABI = [
       { name: 'healthFactor', type: 'uint256' },
     ],
   },
+  {
+    name: 'liquidationCall',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'collateralAsset', type: 'address' },
+      { name: 'debtAsset', type: 'address' },
+      { name: 'user', type: 'address' },
+      { name: 'debtToCover', type: 'uint256' },
+      { name: 'receiveAToken', type: 'bool' },
+    ],
+    outputs: [],
+  },
 ] as const;
 
 // ERC20 ABI for token interactions
