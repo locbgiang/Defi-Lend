@@ -9,15 +9,22 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {PriceOracle} from "./PriceOracle.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/*
-Functions:
-    1. supply
-    2. withdraww
-    3. borrow
-    4. repay
-    5. liquidationCall
-*/
-
+/**
+ * @title Pool
+ * @author Loc Giang
+ * @notice This is the central ochestrator of the protocol
+ *  Holds the core state: reserves mapping and reservesList array (see Pool.reserves, Pool.reservesList)
+ *  Its the single entry point for all user action - supply, withdraw, borrow, repay, liquidationCall 
+ * in Pool.sol
+ *  It is the only authorized caller (onlyPool) of mint/burn functions on both AToken and VariableDebtToken
+ *  Queries PriceOracle.getAssetPrice to compute collateral/debt values and health factor in
+ * Pool.getUserAccountData
+ *  Its called by WETHGateway to bridge native ETH supply/withdraw into the same supply/withdraw flow
+ * 
+ *  So AToken, VariableDebtToken, and PriceOracle are all satellite contracts that Pool composes and 
+ * controls - there's no logic path that bypasses Pool to reach them (except read-only calls like balanceOf).
+ * This matches the 'Core orchestrator' designaion in the responsibilities table of 'CODEBASE_VISUALIZATION.md'
+ */
 contract Pool is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
