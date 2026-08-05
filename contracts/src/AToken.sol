@@ -23,6 +23,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
  * @author Loc Giang
  * @notice AToken is a receipt token that represents a user's deposit in the lending pool.
  * When you deposit USDC, you receive aUSDC. It's proof that you have funds in the protocol.
+ * 
+ * Trading these away lower your health factor.
  */
 contract AToken is ERC20 {
     using SafeERC20 for IERC20;
