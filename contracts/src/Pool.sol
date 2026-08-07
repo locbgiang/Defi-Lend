@@ -25,6 +25,15 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * controls - there's no logic path that bypasses Pool to reach them (except read-only calls like balanceOf).
  * This matches the 'Core orchestrator' designaion in the responsibilities table of 'CODEBASE_VISUALIZATION.md'
  */
+
+/**
+ * Todos: 
+ * 1. Add a check in AToken's transfer path that block the transfer if it 
+ * would drop the sender's health factor below 1 (accounting for the fact that they still owe
+ * their full debt). This is precisely Aave does via ScaledBalanceTokenBase_transfer calling
+ * into the pool's validation logic.
+ *  Add an interface + override _update (OZ v5) or _beforeTokenTransfer (OZ v4) in AToken.sol
+ */ 
 contract Pool is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
