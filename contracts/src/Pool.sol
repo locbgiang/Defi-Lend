@@ -260,8 +260,11 @@ contract Pool is ReentrancyGuard {
 
         for (uint256 i = 0; i < reservesList.length; i++) {
             address asset = reservesList[i];
+            // skip fully before copying the whole struct into memory —
+            // avoids the memory copy cost when a reserve was never activated
+            if (!reserves[asset].isActive) continue;
+
             ReserveData memory reserve = reserves[asset];
-            if (!reserve.isActive) continue;
 
             uint256 aTokenBalance = AToken(reserve.aTokenAddress).balanceOf(user);
             uint256 debtBalance = VariableDebtToken(reserve.variableDebtTokenAddress).balanceOf(user);
