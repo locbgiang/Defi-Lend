@@ -27,7 +27,7 @@ contract SetWETHPrice is Script {
         console.log("WETH price set to $2,450");
 
         // Verify prices are set
-        uint256 usdcPrice = oracle.getAssetPrice(0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8);
+        uint256 usdcPrice = oracle.getAssetPrice(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238);
         uint256 daiPrice = oracle.getAssetPrice(0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357);
         uint256 wethPrice = oracle.getAssetPrice(WETH);
 
