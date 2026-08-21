@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContracts, usePublicClient } from 'wagmi';
 import { useLocation } from 'react-router-dom';
-import { formatUnits, parseUnits } from 'viem';
+import { formatUnits, parseUnits, BaseError, ContractFunctionRevertedError } from 'viem';
 import { useMarkets } from '../hooks/useMarkets';
 import { useUserAccountData, useUserBalances } from '../hooks/usePool';
 import { formatPercent } from '../utils/formatters';
@@ -11,6 +11,7 @@ import '../styles/Borrow.css';
 
 function Borrow() {
   const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
   const location = useLocation();
   const selectedAsset = location.state?.asset || null;
 
@@ -19,7 +20,7 @@ function Borrow() {
   // Per-token approval state: tracks whether the current repay amount is approved
   const [approvedTokens, setApprovedTokens] = useState<Record<string, boolean>>({});
 
-  const { markets, isLoading: marketsLoading } = useMarkets();
+  const { markets, isLoading: marketsLoading, refetch: refetchMarkets } = useMarkets();
   const { data: accountData, isLoading: accountLoading, refetch: refetchAccountData } = useUserAccountData(address);
   const { balances, isLoading: balancesLoading, refetch: refetchBalances } = useUserBalances(address);
 
@@ -63,11 +64,16 @@ function Borrow() {
   const { writeContract: writeRepay, data: repayTxHash, isPending: isRepayPending, error: repayWriteError } = useWriteContract();
   const { isLoading: isRepayConfirming, isSuccess: isRepaySuccess, isError: isRepayError, error: repayTxError } = useWaitForTransactionReceipt({ hash: repayTxHash });
 
-  // Refetch after successful transactions
-  if (isBorrowSuccess || isRepaySuccess) {
-    refetchBalances();
-    refetchAccountData();
-  }
+  // Refetch balances, account data, and market stats after successful transactions.
+  // Wrapped in useEffect (rather than called during render) so each refetch fires
+  // exactly once per success transition instead of on every re-render.
+  useEffect(() => {
+    if (isBorrowSuccess || isRepaySuccess) {
+      refetchBalances();
+      refetchAccountData();
+      refetchMarkets();
+    }
+  }, [isBorrowSuccess, isRepaySuccess, refetchBalances, refetchAccountData, refetchMarkets]);
   const { addToast, updateToast } = useToast();
   const borrowToastId = useRef<number | null>(null);
   const approveToastId = useRef<number | null>(null);
@@ -218,19 +224,50 @@ function Borrow() {
     setRepayAmounts({ ...repayAmounts, [symbol]: borrowed });
   };
 
-  const handleBorrow = (market: typeof markets[0]) => {
+  const handleBorrow = async (market: typeof markets[0]) => {
     const amount = amounts[market.symbol];
     if (!amount || parseFloat(amount) <= 0 || !address) return;
+
+    const args = [
+      market.address as `0x${string}`,
+      parseUnits(amount, Number(market.decimals)),
+      address,
+    ] as const;
+
+    // Pre-flight simulate the call so we surface the REAL revert reason
+    // (e.g. "Health factor too low", "Reserve not active", insufficient
+    // liquidity, etc.) instead of letting MetaMask's gas-estimation fallback
+    // show a confusing "transaction gas limit too high" error when the
+    // underlying call would actually revert.
+    if (publicClient) {
+      try {
+        await publicClient.simulateContract({
+          address: CONTRACTS.POOL as `0x${string}`,
+          abi: POOL_ABI,
+          functionName: 'borrow',
+          args,
+          account: address,
+        });
+      } catch (err) {
+        let message = 'Transaction would fail';
+        if (err instanceof BaseError) {
+          const revertError = err.walk((e) => e instanceof ContractFunctionRevertedError);
+          if (revertError instanceof ContractFunctionRevertedError) {
+            message = revertError.reason ?? revertError.shortMessage ?? message;
+          } else {
+            message = err.shortMessage ?? message;
+          }
+        }
+        addToast('error', 'Borrow Would Fail', message);
+        return; // don't open the wallet at all
+      }
+    }
 
     writeBorrow({
       address: CONTRACTS.POOL as `0x${string}`,
       abi: POOL_ABI,
       functionName: 'borrow',
-      args: [
-        market.address as `0x${string}`,
-        parseUnits(amount, Number(market.decimals)),
-        address,
-      ],
+      args,
     });
   };
 

@@ -12,9 +12,9 @@ function Supply() {
   const { address, isConnected } = useAccount();
   const location = useLocation();
   const selectedAsset = location.state?.asset || null;
-  const { markets, isLoading: marketsLoading } = useMarkets();
+  const { markets, isLoading: marketsLoading, refetch: refetchMarkets } = useMarkets();
   const { balances, isLoading: balancesLoading, refetch: refetchBalances } = useUserBalances(address);
-  const { data: ethBalance } = useBalance({ address });
+  const { data: ethBalance, refetch: refetchEthBalance } = useBalance({ address });
 
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [ethAmount, setEthAmount] = useState('');
@@ -199,10 +199,18 @@ function Supply() {
     }
   }, [isAWethApproveError]);
 
-  // Refetch balances after successful transactions
-  if (isSupplySuccess || isDepositETHSuccess || isWithdrawSuccess) {
-    refetchBalances();
-  }
+  // Refetch balances, markets, and native ETH balance after successful transactions.
+  // Using useEffect (instead of calling refetch during render) ensures each refetch
+  // fires exactly once per success transition, and covers both the user's own
+  // balances AND the market-wide stats (total supply/APY/liquidity) so the whole
+  // page reflects the new on-chain state right after a deposit/withdraw confirms.
+  useEffect(() => {
+    if (isSupplySuccess || isDepositETHSuccess || isWithdrawSuccess) {
+      refetchBalances();
+      refetchMarkets();
+      refetchEthBalance();
+    }
+  }, [isSupplySuccess, isDepositETHSuccess, isWithdrawSuccess, refetchBalances, refetchMarkets, refetchEthBalance]);
 
   // Track approvals
   if (isApproveSuccess && !approvedTokens[Object.keys(amounts).find(k => amounts[k]) || '']) {

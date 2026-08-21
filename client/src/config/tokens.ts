@@ -3,7 +3,7 @@ import type { Token } from '../types';
 // Supported tokens - Sepolia testnet (Aave faucet tokens)
 export const SUPPORTED_TOKENS: Token[] = [
   {
-    address: '0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8',
+    address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
     symbol: 'USDC',
     name: 'USD Coin',
     decimals: 6,
