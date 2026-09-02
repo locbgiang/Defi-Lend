@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance, useReadContracts } from 'wagmi';
 import { useLocation } from 'react-router-dom';
 import { parseUnits } from 'viem';
 import { useMarkets } from '../hooks/useMarkets';
@@ -20,6 +20,21 @@ function Supply() {
   const [ethAmount, setEthAmount] = useState('');
   const [withdrawAmounts, setWithdrawAmounts] = useState<Record<string, string>>({});
   const [withdrawEthAmount, setWithdrawEthAmount] = useState('');
+
+  // Read on-chain allowances for all market tokens (owner=user, spender=Pool).
+  // This is the source of truth for whether "Approve" or "Supply" should be
+  // shown — NOT a locally-tracked flag — so the button reflects reality even
+  // across page reloads or if a previous approval already covers the amount.
+  const allowanceContracts = markets.map((market) => ({
+    address: market.address as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: 'allowance' as const,
+    args: [address as `0x${string}`, CONTRACTS.POOL as `0x${string}`],
+  }));
+  const { data: allowancesData, refetch: refetchAllowances } = useReadContracts({
+    contracts: allowanceContracts,
+    query: { enabled: !!address && markets.length > 0 },
+  });
 
   // Approve contract hook
   const { writeContract: writeApprove, data: approveTxHash, isPending: isApprovePending, error: approveWriteError } = useWriteContract();
@@ -212,13 +227,35 @@ function Supply() {
     }
   }, [isSupplySuccess, isDepositETHSuccess, isWithdrawSuccess, refetchBalances, refetchMarkets, refetchEthBalance]);
 
-  // Track approvals
-  if (isApproveSuccess && !approvedTokens[Object.keys(amounts).find(k => amounts[k]) || '']) {
-    const approvedSymbol = Object.keys(amounts).find(k => amounts[k]);
-    if (approvedSymbol) {
-      setApprovedTokens(prev => ({ ...prev, [approvedSymbol]: true }));
+  // Refetch on-chain allowances after a successful approve, so the button
+  // flips from "Approve" to "Supply" using real chain data.
+  useEffect(() => {
+    if (isApproveSuccess) {
+      refetchAllowances();
     }
-  }
+  }, [isApproveSuccess, refetchAllowances]);
+
+  // Sync on-chain allowances → approvedTokens whenever allowance data or
+  // entered amounts change. This replaces the old approach of guessing which
+  // token was just approved from local state, which could point at the wrong
+  // symbol (e.g. if `amounts` had another key inserted earlier) and would
+  // also reset to "Approve" on every page reload even if a sufficient
+  // allowance already existed on-chain.
+  useEffect(() => {
+    if (!allowancesData || markets.length === 0) return;
+    const updated: Record<string, boolean> = {};
+    markets.forEach((market, i) => {
+      const raw = allowancesData[i]?.result as bigint | undefined;
+      const amount = amounts[market.symbol];
+      if (raw !== undefined && amount && parseFloat(amount) > 0) {
+        const needed = parseUnits(amount, Number(market.decimals));
+        updated[market.symbol] = raw >= needed;
+      } else {
+        updated[market.symbol] = false;
+      }
+    });
+    setApprovedTokens(updated);
+  }, [allowancesData, amounts, markets]);
 
   if (isAWethApproveSuccess && !aWethApproved) {
     setAWethApproved(true);
