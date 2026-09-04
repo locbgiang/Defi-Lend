@@ -235,6 +235,34 @@ function Supply() {
     }
   }, [isApproveSuccess, refetchAllowances]);
 
+  // Real on-chain aWETH allowance for WETHGateway (fixes stale/local aWethApproved state)
+  const { data: aWethAllowanceData, refetch: refetchAWethAllowance } = useReadContracts({
+    contracts: [{
+      address: CONTRACTS.ATOKENS.aWETH as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: 'allowance' as const,
+      args: [address as `0x${string}`, CONTRACTS.WETH_GATEWAY as `0x${string}`],
+    }],
+    query: { enabled: !!address },
+  });
+
+  // Sync aWethApproved from real allowance instead of local-only state
+  useEffect(() => {
+    const raw = aWethAllowanceData?.[0]?.result as bigint | undefined;
+    if (raw !== undefined && withdrawEthAmount && parseFloat(withdrawEthAmount) > 0) {
+      const needed = parseUnits(withdrawEthAmount, 18);
+      setAWethApproved(raw >= needed);
+    } else {
+      setAWethApproved(false);
+    }
+  }, [aWethAllowanceData, withdrawEthAmount]);
+
+  useEffect(() => {
+    if (isAWethApproveSuccess) {
+      refetchAWethAllowance();
+    }
+  }, [isAWethApproveSuccess, refetchAWethAllowance]);
+
   // Sync on-chain allowances → approvedTokens whenever allowance data or
   // entered amounts change. This replaces the old approach of guessing which
   // token was just approved from local state, which could point at the wrong
