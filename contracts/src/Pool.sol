@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {AToken} from "./AToken.sol";
 import {VariableDebtToken} from "./VariableDebtToken.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {PriceOracle} from "./PriceOracle.sol";
@@ -58,6 +59,21 @@ contract Pool is ReentrancyGuard {
         uint256 userCollateral;
         uint256 collateralValueInBase;
         uint256 debtValueCovered;
+        uint256 debtAssetUnit;
+        uint256 collateralAssetUnit;
+    }
+
+    // helper struct to avoid "stack too deep" in getUserAccountData
+    struct AccountDataLocalVars {
+        uint256 avgLtvWeighted;
+        uint256 avgLiquidationThresholdWeighted;
+        uint256 assetPrice;
+        uint256 assetUnit;
+        uint256 aTokenBalance;
+        uint256 debtBalance;
+        uint256 collateralValue;
+        uint256 debtValue;
+        uint256 maxBorrowBase;
     }
 
     mapping(address => ReserveData) public reserves;
@@ -253,48 +269,44 @@ contract Pool is ReentrancyGuard {
         uint256 ltv,
         uint256 healthFactor
     ) {
-        totalCollateralBase = 0;
-        totalDebtBase = 0;
-        uint256 avgLtvWeighted = 0;
-        uint256 avgLiquidationThresholdWeighted = 0;
+        AccountDataLocalVars memory v;
 
         for (uint256 i = 0; i < reservesList.length; i++) {
             address asset = reservesList[i];
-            // skip fully before copying the whole struct into memory —
-            // avoids the memory copy cost when a reserve was never activated
             if (!reserves[asset].isActive) continue;
 
             ReserveData memory reserve = reserves[asset];
 
-            uint256 aTokenBalance = AToken(reserve.aTokenAddress).balanceOf(user);
-            uint256 debtBalance = VariableDebtToken(reserve.variableDebtTokenAddress).balanceOf(user);
-            if (aTokenBalance == 0 && debtBalance == 0) continue;
+            v.aTokenBalance = AToken(reserve.aTokenAddress).balanceOf(user);
+            v.debtBalance = VariableDebtToken(reserve.variableDebtTokenAddress).balanceOf(user);
+            if (v.aTokenBalance == 0 && v.debtBalance == 0) continue;
 
-            uint256 assetPrice = priceOracle.getAssetPrice(asset); // 18 decimals
+            v.assetPrice = priceOracle.getAssetPrice(asset); // 18 decimals
+            v.assetUnit = 10 ** IERC20Metadata(asset).decimals();
 
-            if (aTokenBalance > 0) {
-                uint256 collateralValue = (aTokenBalance * assetPrice) / 1e18;
-                totalCollateralBase += collateralValue;
-                avgLtvWeighted += collateralValue * reserve.ltv;
-                avgLiquidationThresholdWeighted += collateralValue * reserve.liquidationThreshold;
+            if (v.aTokenBalance > 0) {
+                v.collateralValue = (v.aTokenBalance * v.assetPrice) / v.assetUnit;
+                totalCollateralBase += v.collateralValue;
+                v.avgLtvWeighted += v.collateralValue * reserve.ltv;
+                v.avgLiquidationThresholdWeighted += v.collateralValue * reserve.liquidationThreshold;
             }
 
-            if (debtBalance > 0) {
-                uint256 debtValue = (debtBalance * assetPrice) / 1e18;
-                totalDebtBase += debtValue;
+            if (v.debtBalance > 0) {
+                v.debtValue = (v.debtBalance * v.assetPrice) / v.assetUnit;
+                totalDebtBase += v.debtValue;
             }
         }
 
         if (totalCollateralBase > 0) {
-            ltv = avgLtvWeighted / totalCollateralBase;
-            currentLiquidationThreshold = avgLiquidationThresholdWeighted / totalCollateralBase;
+            ltv = v.avgLtvWeighted / totalCollateralBase;
+            currentLiquidationThreshold = v.avgLiquidationThresholdWeighted / totalCollateralBase;
         } else {
             ltv = 0;
             currentLiquidationThreshold = 0;
         }
 
-        uint256 maxBorrowBase = (totalCollateralBase * ltv) / 10000;
-        availableBorrowsBase = maxBorrowBase > totalDebtBase ? maxBorrowBase - totalDebtBase : 0;
+        v.maxBorrowBase = (totalCollateralBase * ltv) / 10000;
+        availableBorrowsBase = v.maxBorrowBase > totalDebtBase ? v.maxBorrowBase - totalDebtBase : 0;
 
         healthFactor = _calculateHealthFactor(totalCollateralBase, totalDebtBase, currentLiquidationThreshold);
     }
@@ -418,10 +430,16 @@ contract Pool is ReentrancyGuard {
         vars.debtAssetPrice = priceOracle.getAssetPrice(debtAsset);
         vars.collateralAssetPrice = priceOracle.getAssetPrice(collateralAsset);
 
+        // normalize by each asset's own decimals (e.g. USDC=6, WETH=18) instead
+        // of assuming 18 decimals for every asset — mirrors the fix already
+        // applied in getUserAccountData()
+        vars.debtAssetUnit = 10 ** IERC20Metadata(debtAsset).decimals();
+        vars.collateralAssetUnit = 10 ** IERC20Metadata(collateralAsset).decimals();
+
         // conversions and bonus
-        vars.debtAmountInBase = (vars.actualDebtToCover * vars.debtAssetPrice) / 1e18;
+        vars.debtAmountInBase = (vars.actualDebtToCover * vars.debtAssetPrice) / vars.debtAssetUnit;
         vars.collateralAmountWithBonus = (vars.debtAmountInBase * (10000 + collateralReserve.liquidationBonus)) / 10000;
-        vars.collateralToLiquidate = (vars.collateralAmountWithBonus * 1e18) / vars.collateralAssetPrice;
+        vars.collateralToLiquidate = (vars.collateralAmountWithBonus * vars.collateralAssetUnit) / vars.collateralAssetPrice;
 
         // user's collateral and possible cap
         vars.userCollateral = AToken(collateralReserve.aTokenAddress).balanceOf(user);
@@ -429,9 +447,9 @@ contract Pool is ReentrancyGuard {
 
         if (vars.collateralToLiquidate > vars.userCollateral) {
             vars.collateralToLiquidate = vars.userCollateral;
-            vars.collateralValueInBase = (vars.collateralToLiquidate * vars.collateralAssetPrice) / 1e18;
+            vars.collateralValueInBase = (vars.collateralToLiquidate * vars.collateralAssetPrice) / vars.collateralAssetUnit;
             vars.debtValueCovered = (vars.collateralValueInBase * 10000) / (10000 + collateralReserve.liquidationBonus);
-            vars.actualDebtToCover = (vars.debtValueCovered * 1e18) / vars.debtAssetPrice;
+            vars.actualDebtToCover = (vars.debtValueCovered * vars.debtAssetUnit) / vars.debtAssetPrice;
         }
 
         // perform transfers / burns using struct fields
