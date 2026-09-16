@@ -1,26 +1,26 @@
 // Contract addresses - update these after deployment
 // For local development with Anvil, these will be set after running deploy script
 /**
-Contract	    Address
-Pool	        0xDA0F9F9c05D2A9B46561f628a64Eb29b656d29B3
-PriceOracle	  0xdF7514C51674B6aA5728bc3D0c8c6c2F7d96AaC7
-aUSDC	        0x227577477F05d71595617a08643B7db35AF71Ddd
-vdUSDC	      0x130539520029341869d5236735FD31c26854218c
-aDAI	        0x7916AefE5aA4B71299eaBb6241072dDb354c31D7
-vdDAI	        0x8A090b7674309050A5D748aA291ba0c9EeD4911a
-aWETH         0x64cDDef432871E9E376103F12c89e925936bC03d
-vdWETH        0xAeBd2bA52C776B99b6631DcE70640e020a9C5e94
-WETHGateway   0x6724FA47Ca81F10feeACD202e5f8Bc13D3594094
+Contract            Address
+Pool            0x19213d7C7CBE804abfa8580ec3D64B0c9D5B1511
+PriceOracle       0xdF7514C51674B6aA5728bc3D0c8c6c2F7d96AaC7
+aUSDC           0xaeaA17b89d23B4AbD0386b55c84197c51C358D49
+vdUSDC        0x786eaBEF3e156690dC802B3Eb2C1D7c9947890bF
+aDAI            0x9db437C97F2DCd1E05d417F064E6d571E1f1B476
+vdDAI           0x8f9FE68Bd70a27317fc4dD1F7949EA287F43a3B7
+aWETH         0x830a56f66C2d9EF3f8d05119177a275D8bf73470
+vdWETH        0x117FDCb1b12EeD71F9440A5A50a17DdEdDaC5097
+WETHGateway   0x8013E1Ee4c96A51c517F7d43E9799Da1f755AC5f
  */
 export const CONTRACTS = {
   // Pool contract - main entry point (Sepolia)
-  POOL: '0xDA0F9F9c05D2A9B46561f628a64Eb29b656d29B3' as `0x${string}`,
+  POOL: '0x19213d7C7CBE804abfa8580ec3D64B0c9D5B1511' as `0x${string}`,
   
   // Price Oracle (Sepolia)
   PRICE_ORACLE: '0xdF7514C51674B6aA5728bc3D0c8c6c2F7d96AaC7' as `0x${string}`,
   
   // WETH Gateway for native ETH deposits (Sepolia)
-  WETH_GATEWAY: '0x6724FA47Ca81F10feeACD202e5f8Bc13D3594094' as `0x${string}`,
+  WETH_GATEWAY: '0x8013E1Ee4c96A51c517F7d43E9799Da1f755AC5f' as `0x${string}`,
   
   // Token addresses (Sepolia - Aave testnet tokens)
   TOKENS: {
@@ -31,9 +31,9 @@ export const CONTRACTS = {
   
   // aToken addresses (Sepolia)
   ATOKENS: {
-    aUSDC: '0x227577477F05d71595617a08643B7db35AF71Ddd' as `0x${string}`,
-    aDAI: '0x7916AefE5aA4B71299eaBb6241072dDb354c31D7' as `0x${string}`,
-    aWETH: '0x64cDDef432871E9E376103F12c89e925936bC03d' as `0x${string}`,
+    aUSDC: '0xaeaA17b89d23B4AbD0386b55c84197c51C358D49' as `0x${string}`,
+    aDAI: '0x9db437C97F2DCd1E05d417F064E6d571E1f1B476' as `0x${string}`,
+    aWETH: '0x830a56f66C2d9EF3f8d05119177a275D8bf73470' as `0x${string}`,
   },
 } as const;
 
@@ -180,9 +180,9 @@ export const ERC20_ABI = [
 
 // Debt token addresses (Sepolia)
 export const DEBT_TOKENS = {
-  vdUSDC: '0x130539520029341869d5236735FD31c26854218c' as `0x${string}`,
-  vdDAI: '0x8A090b7674309050A5D748aA291ba0c9EeD4911a' as `0x${string}`,
-  vdWETH: '0xAeBd2bA52C776B99b6631DcE70640e020a9C5e94' as `0x${string}`,
+  vdUSDC: '0x786eaBEF3e156690dC802B3Eb2C1D7c9947890bF' as `0x${string}`,
+  vdDAI: '0x8f9FE68Bd70a27317fc4dD1F7949EA287F43a3B7' as `0x${string}`,
+  vdWETH: '0x117FDCb1b12EeD71F9440A5A50a17DdEdDaC5097' as `0x${string}`,
 } as const;
 
 // WETHGateway ABI for native ETH deposits

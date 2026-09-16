@@ -235,6 +235,25 @@ function Supply() {
     }
   }, [isApproveSuccess, refetchAllowances]);
 
+  // Sync approvedTokens from real on-chain allowance data + current input amount.
+  // This replaces the old approach of only ever setting approvedTokens=false,
+  // which meant the "Supply" button never appeared.
+  useEffect(() => {
+    if (!allowancesData) return;
+    const next: Record<string, boolean> = {};
+    markets.forEach((market, i) => {
+      const raw = allowancesData[i]?.result as bigint | undefined;
+      const amount = amounts[market.symbol];
+      if (raw !== undefined && amount && parseFloat(amount) > 0) {
+        const needed = parseUnits(amount, Number(market.decimals));
+        next[market.symbol] = raw >= needed;
+      } else {
+        next[market.symbol] = false;
+      }
+    });
+    setApprovedTokens(next);
+  }, [allowancesData, amounts, markets]);
+
   // Real on-chain aWETH allowance for WETHGateway (fixes stale/local aWethApproved state)
   const { data: aWethAllowanceData, refetch: refetchAWethAllowance } = useReadContracts({
     contracts: [{
@@ -262,32 +281,6 @@ function Supply() {
       refetchAWethAllowance();
     }
   }, [isAWethApproveSuccess, refetchAWethAllowance]);
-
-  // Sync on-chain allowances → approvedTokens whenever allowance data or
-  // entered amounts change. This replaces the old approach of guessing which
-  // token was just approved from local state, which could point at the wrong
-  // symbol (e.g. if `amounts` had another key inserted earlier) and would
-  // also reset to "Approve" on every page reload even if a sufficient
-  // allowance already existed on-chain.
-  useEffect(() => {
-    if (!allowancesData || markets.length === 0) return;
-    const updated: Record<string, boolean> = {};
-    markets.forEach((market, i) => {
-      const raw = allowancesData[i]?.result as bigint | undefined;
-      const amount = amounts[market.symbol];
-      if (raw !== undefined && amount && parseFloat(amount) > 0) {
-        const needed = parseUnits(amount, Number(market.decimals));
-        updated[market.symbol] = raw >= needed;
-      } else {
-        updated[market.symbol] = false;
-      }
-    });
-    setApprovedTokens(updated);
-  }, [allowancesData, amounts, markets]);
-
-  if (isAWethApproveSuccess && !aWethApproved) {
-    setAWethApproved(true);
-  }
 
   // Handle ERC20 approve
   const handleApprove = (market: typeof markets[0]) => {
