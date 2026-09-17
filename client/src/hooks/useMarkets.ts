@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
 import { CONTRACTS, DEBT_TOKENS, POOL_ABI, ERC20_ABI, PRICE_ORACLE_ABI } from '../config/contracts';
@@ -112,7 +113,7 @@ export function useMarkets() {
     },
   });
 
-  const markets: MarketData[] = MARKET_CONFIG.map((market, index) => {
+  const markets: MarketData[] = useMemo(() => MARKET_CONFIG.map((market, index) => {
     const baseIndex = index * 4; // 4 calls per market now
     const rawReserve = data?.[baseIndex]?.result as readonly unknown[] | undefined;
     const reserveData = parseReserveData(rawReserve);
@@ -155,7 +156,7 @@ export function useMarkets() {
       utilizationRate: utilization.toFixed(2),
       isActive: reserveData?.isActive ?? false,
     };
-  });
+  }), [data]);
 
   return {
     markets,

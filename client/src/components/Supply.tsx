@@ -9,6 +9,7 @@ import { CONTRACTS, POOL_ABI, ERC20_ABI, WETH_GATEWAY_ABI } from '../config/cont
 import '../styles/Supply.css';
 
 function Supply() {
+  console.log('Supply rendered', Date.now());
   const { address, isConnected } = useAccount();
   const location = useLocation();
   const selectedAsset = location.state?.asset || null;
