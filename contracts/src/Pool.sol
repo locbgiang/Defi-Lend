@@ -402,10 +402,10 @@ contract Pool is ReentrancyGuard {
         
         // getting the user's account data
         (
-            uint256 totalCollateralBase,
-            uint256 totalDebtBase,
             ,
-            uint256 currentLiquidationThreshold,
+            ,
+            ,
+            ,
             ,
             uint256 healthFactor
         ) = getUserAccountData(user);
