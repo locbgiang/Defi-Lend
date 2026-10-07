@@ -380,6 +380,37 @@ contract PoolTest is Test {
         assertEq(dai.balanceOf(user2), 10000e18 - 2000e18 + borrowAmount); // user2 gets DAI
     }
 
+    function testATokenTransferRevertsWhenItWouldMakePositionUnhealthy() public {
+        // supply USDC collateral for user 1
+        vm.startPrank(user1);
+        usdc.approve(address(pool), 1000e18);
+        pool.supply(address(usdc), 1000e18, user1);
+        vm.stopPrank();
+
+        // supply DAI collateral for user 2
+        vm.startPrank(user2);
+        dai.approve(address(pool), 2000e18);
+        pool.supply(address(dai), 2000e18, user2);
+        vm.stopPrank();
+
+        // user1 borrows some dai
+        vm.prank(user1);
+        pool.borrow(address(dai), 700e18, user1);
+
+        (,,,,, uint256 healthFactorBefore) = pool.getUserAccountData(user1);
+        assertGt(healthFactorBefore, 1e18, "Position should initially be healthy");
+
+        vm.prank(user1);
+        vm.expectRevert("Health factor too low");
+        aUSDC.transfer(user2, 200e18);
+
+        assertEq(aUSDC.balanceOf(user1), 1000e18);
+        assertEq(aUSDC.balanceOf(user2), 0);
+
+        (,,,,, uint256 healthFactorAfter) = pool.getUserAccountData(user1);
+        assertEq(healthFactorAfter, healthFactorBefore);
+    }
+
     function testBorrowRevertsZeroAmount() public {
         vm.prank(user1);
         vm.expectRevert("Amount must be greater than 0");

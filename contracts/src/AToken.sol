@@ -18,6 +18,17 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+interface IPoolAccountData {
+    function getUserAccountData(address user) external view returns (
+        uint256 totalCollateralBase,
+        uint256 totalDebtBase,
+        uint256 availableBorrowsBase,
+        uint256 currentLiquidationThreshold,
+        uint256 ltv,
+        uint256 healthFactor
+    );
+}
+
 /**
  * @title AToken
  * @author Loc Giang
@@ -147,6 +158,16 @@ contract AToken is ERC20 {
         _transfer(from, to, value);
 
         emit TransferOnLiquidation(from, to, value);
+    }
+
+    function _update(address from, address to, uint256 value) internal override {
+        super._update(from, to, value);
+
+        if (from != address(0) && to != address(0) && msg.sender != POOL) {
+            (, uint256 totalDebtBase,,,, uint256 healthFactor) =
+                IPoolAccountData(POOL).getUserAccountData(from);
+            require(totalDebtBase == 0 || healthFactor >= 1e18, "Health factor too low");
+        }
     }
 
     // events
